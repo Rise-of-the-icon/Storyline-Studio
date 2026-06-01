@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg font-body text-text antialiased;
+  }
+}
+
+@layer components {
+  .timeline-reveal {
+    @apply opacity-100;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .timeline-reveal {
+      opacity: 0;
+      transform: translateY(14px);
+      transition:
+        opacity 0.38s ease-out,
+        transform 0.38s ease-out;
+    }
+
+    .timeline-reveal-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .resolver-reveal {
+    @apply opacity-100;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .resolver-reveal {
+      opacity: 0;
+      transform: translateY(10px);
+      transition:
+        opacity 0.4s ease-out,
+        transform 0.4s ease-out;
+    }
+
+    .resolver-reveal-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
