@@ -1,5 +1,6 @@
 import { SCHEMA_VERSION, type DigitalTwinProfile, type WikipediaProfile } from "../types/twin";
 import { searchDemoSubjects, type DemoSearchSubject } from "./mockData";
+import { classifyHits, type SubjectDomain } from "./subjectDomain";
 
 const WIKI_SEARCH = "https://en.wikipedia.org/w/rest.php/v1/search/page";
 const WIKI_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/";
@@ -10,6 +11,7 @@ export interface WikipediaSearchHit {
   pageId: string;
   title: string;
   description: string;
+  domain: SubjectDomain;
   thumbnailUrl?: string;
   /** Present when this hit maps to a full local demo twin. */
   demoSubjectId?: string;
@@ -18,6 +20,8 @@ export interface WikipediaSearchHit {
 export interface WikipediaSearchResponse {
   results: WikipediaSearchHit[];
   source: SearchSource;
+  /** Live Wikipedia returned pages but none matched sports/music filter. */
+  allFilteredByDomain?: boolean;
 }
 
 function stripHtml(html: string): string {
@@ -56,14 +60,25 @@ export async function searchWikipedia(
       }>;
     };
 
-    const results: WikipediaSearchHit[] = (data.pages ?? []).map((page) => ({
+    const rawHits = (data.pages ?? []).map((page) => ({
       pageId: String(page.id),
       title: page.title,
       description: stripHtml(page.excerpt ?? ""),
       thumbnailUrl: page.thumbnail?.url,
     }));
 
-    return { results, source: "live" };
+    const rawCount = rawHits.length;
+    const { classified } = await classifyHits(rawHits, signal);
+    const results: WikipediaSearchHit[] = classified.map(({ hit, domain }) => ({
+      ...hit,
+      domain,
+    }));
+
+    return {
+      results,
+      source: "live",
+      allFilteredByDomain: rawCount > 0 && results.length === 0,
+    };
   } catch (err) {
     if (signal?.aborted) {
       return { results: [], source: "live" };

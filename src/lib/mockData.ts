@@ -269,7 +269,8 @@ export const DEMO_SEARCH_SUBJECTS: DemoSearchSubject[] = [
       pageId: "demo-michael-jordan",
       title: "Michael Jordan",
       description:
-        "Full demo — 10 events, guardrail flag on “Private relationships”, low-confidence rumor.",
+        "American former professional basketball player — full demo twin with guardrail flag.",
+      domain: "sports",
       demoSubjectId: "demo-michael-jordan",
     },
     buildTwin: buildMichaelJordanTwin,
@@ -281,7 +282,8 @@ export const DEMO_SEARCH_SUBJECTS: DemoSearchSubject[] = [
       pageId: "demo-thin-profile",
       title: "Alex Rivera (demo)",
       description:
-        "Thin timeline demo — only 3 public events (triggers S3 thin-timeline guidance).",
+        "American singer-songwriter — thin timeline demo (3 public events).",
+      domain: "music",
       demoSubjectId: "demo-thin-profile",
     },
     buildTwin: buildThinProfileTwin,

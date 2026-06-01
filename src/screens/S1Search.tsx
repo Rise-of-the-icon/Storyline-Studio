@@ -5,6 +5,7 @@ import { SearchResultSkeleton } from "../components/Skeleton";
 import { useTwin } from "../context/TwinContext";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { getDemoSubjectById } from "../lib/mockData";
+import type { SubjectDomain } from "../lib/subjectDomain";
 import {
   createDraftFromDemoSubject,
   createDraftFromWikipedia,
@@ -20,7 +21,16 @@ type SearchPhase =
   | "loading"
   | "results"
   | "empty"
+  | "filtered-empty"
   | "error";
+
+function domainBadgeLabel(domain: SubjectDomain): string {
+  return domain === "sports" ? "Sports" : "Music";
+}
+
+function domainBadgeVariant(domain: SubjectDomain): "blue" | "gold" {
+  return domain === "sports" ? "blue" : "gold";
+}
 
 export function S1Search() {
   const { setDraft, goTo } = useTwin();
@@ -64,7 +74,9 @@ export function S1Search() {
       if (controller.signal.aborted) return;
       setResults(response.results);
       setSource(response.source);
-      if (response.results.length === 0) {
+      if (response.allFilteredByDomain) {
+        setPhase("filtered-empty");
+      } else if (response.results.length === 0) {
         setPhase("empty");
       } else {
         setPhase("results");
@@ -109,6 +121,9 @@ export function S1Search() {
       </h1>
       <p className="mt-2 font-body text-sm text-textsub">
         Search Wikipedia to start a digital twin.
+      </p>
+      <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-textmuted">
+        Showing public figures in sports and music
       </p>
 
       <label className="mt-8 block">
@@ -171,6 +186,18 @@ export function S1Search() {
           </div>
         )}
 
+        {phase === "filtered-empty" && !isLoading && (
+          <div className="rounded-lg border border-border bg-card px-6 py-10 text-center">
+            <p className="font-body text-sm text-text">
+              No sports or music figures match &ldquo;{debouncedQuery.trim()}
+              &rdquo;.
+            </p>
+            <p className="mt-2 font-body text-xs text-textsub">
+              Try an athlete, coach, singer, or musician.
+            </p>
+          </div>
+        )}
+
         {(phase === "results" || phase === "error") &&
           !isLoading &&
           results.map((hit) => (
@@ -202,7 +229,10 @@ export function S1Search() {
                   <span className="font-body font-medium text-text">
                     {hit.title}
                   </span>
-                  <Badge variant={hit.demoSubjectId ? "gold" : "blue"}>
+                  <Badge variant={domainBadgeVariant(hit.domain)}>
+                    {domainBadgeLabel(hit.domain)}
+                  </Badge>
+                  <Badge variant="muted">
                     {hit.demoSubjectId ? "Demo" : "Wikipedia"}
                   </Badge>
                 </div>
