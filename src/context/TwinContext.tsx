@@ -7,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createMockTwin } from "../dev/mockTwin";
 import {
   getBackScreen,
   getForwardScreen,
@@ -15,7 +14,14 @@ import {
   getForwardStudioStep,
   GUARDRAIL_REJECTION_SCREEN,
 } from "../lib/navigation";
-import { getDraft, saveTwin, setDraft as persistDraftId } from "../lib/storage";
+import { getDemoSubjectById } from "../data/demoSubjects";
+import {
+  deleteActiveDraft,
+  getDraft,
+  saveTwin,
+  setDraft as persistDraftId,
+} from "../lib/storage";
+import { createDraftFromDemoSubject } from "../lib/wikipedia";
 import type { DigitalTwinProfile } from "../types/twin";
 import {
   SCREEN_META,
@@ -32,23 +38,42 @@ export interface TwinContextValue {
   goTo: (screen: ScreenId) => void;
   goBack: () => void;
   goForward: () => void;
+  /**
+   * Reset navigation to the landing screen (S1). Does **not** delete the
+   * persisted draft — it just clears the in-memory draft so the next visit
+   * to S1 starts clean. The persisted draft remains in `localStorage` and
+   * will rehydrate on a fresh boot.
+   *
+   * Caller is responsible for confirmation when
+   * `hasUnsavedProgress(draft, screen)` is true — see `AppHeader`.
+   */
+  goHome: () => void;
   rejectToCustomMoments: () => void;
   setDraft: (draft: DigitalTwinProfile | null) => void;
   updateDraft: (updater: (prev: DigitalTwinProfile) => DigitalTwinProfile) => void;
   persistDraft: () => void;
+  /**
+   * Hard-delete the persisted draft + the in-memory draft + the index
+   * entry. Used by the S1 "Clear draft" action (with confirmation). Does
+   * not navigate — caller stays on S1 after the clear.
+   */
+  clearDraft: () => void;
   setStudioStep: (step: StudioStepId) => void;
   advanceStudioStep: () => void;
   backStudioStep: () => void;
+  /**
+   * Opt-in demo path. Builds a real demo twin from `DEMO_SUBJECTS`
+   * (e.g. David West, Tom Hoover, Walt Taylor) and advances to S2. This is the
+   * **only** sanctioned way to load a demo subject — there is no silent
+   * fallback that mints a fake "Demo Subject" placeholder anywhere else.
+   */
+  useDemoSubject: (demoSubjectId: string) => boolean;
 }
 
 const TwinContext = createContext<TwinContextValue | null>(null);
 
 function stepForScreen(screen: ScreenId): number {
   return SCREEN_META[screen].step;
-}
-
-function needsDraft(screen: ScreenId): boolean {
-  return screen !== "S1";
 }
 
 export function TwinProvider({ children }: { children: ReactNode }) {
@@ -69,37 +94,44 @@ export function TwinProvider({ children }: { children: ReactNode }) {
 
   const persistDraft = useCallback(() => {
     if (!draft) return;
-    saveTwin(draft);
-    persistDraftId(draft.twinId);
+    const saved = saveTwin(draft);
+    if (saved) {
+      persistDraftId(saved.twinId);
+      // Keep the in-memory copy in sync with the lastSavedAtISO stamp the
+      // storage layer just minted, so AppHeader / S6 see the freshest time.
+      setDraftState(saved);
+    }
   }, [draft]);
 
   const setDraft = useCallback((next: DigitalTwinProfile | null) => {
-    setDraftState(next);
-    if (next) {
-      saveTwin(next);
-      persistDraftId(next.twinId);
+    if (!next) {
+      setDraftState(null);
+      return;
+    }
+    const saved = saveTwin(next);
+    if (saved) {
+      setDraftState(saved);
+      persistDraftId(saved.twinId);
+    } else {
+      // Persistence failed (quota, private-mode iOS, etc.). Surface the
+      // unpersisted twin so the user doesn't lose in-memory work; the next
+      // updateDraft attempt will retry.
+      setDraftState(next);
     }
   }, []);
 
-  const ensureDraft = useCallback((): DigitalTwinProfile => {
-    if (draft) return draft;
-    const created = createMockTwin("Demo Subject");
-    setDraftState(created);
-    saveTwin(created);
-    persistDraftId(created.twinId);
-    return created;
-  }, [draft]);
-
-  const goTo = useCallback(
-    (next: ScreenId) => {
-      if (needsDraft(next)) ensureDraft();
-      setScreen(next);
-      const step = stepForScreen(next);
-      setCompletedThroughStep((prev) => Math.max(prev, step));
-      if (next === "S7") setStudioStep("SS1");
-    },
-    [ensureDraft],
-  );
+  /**
+   * Pure navigation. Does NOT fabricate a draft — the previous implementation
+   * silently created a `createMockTwin("Demo Subject")` placeholder here,
+   * which clobbered any real Wikipedia draft that S1 had just set in the same
+   * synchronous handler. Each screen that requires a draft (S2–S7) guards
+   * itself via `if (!draft) goTo("S1")`.
+   */
+  const goTo = useCallback((next: ScreenId) => {
+    setScreen(next);
+    setCompletedThroughStep((prev) => Math.max(prev, stepForScreen(next)));
+    if (next === "S7") setStudioStep("SS1");
+  }, []);
 
   const goBack = useCallback(() => {
     const target = getBackScreen(screen);
@@ -111,21 +143,50 @@ export function TwinProvider({ children }: { children: ReactNode }) {
     if (target) goTo(target);
   }, [screen, goTo]);
 
+  const goHome = useCallback(() => {
+    setDraftState(null);
+    setStudioStep("SS1");
+    setScreen("S1");
+    setCompletedThroughStep(1);
+  }, []);
+
   const rejectToCustomMoments = useCallback(() => {
     goTo(GUARDRAIL_REJECTION_SCREEN);
   }, [goTo]);
 
+  const clearDraft = useCallback(() => {
+    deleteActiveDraft();
+    setDraftState(null);
+    setStudioStep("SS1");
+    setScreen("S1");
+    setCompletedThroughStep(1);
+  }, []);
+
   const updateDraft = useCallback(
     (updater: (prev: DigitalTwinProfile) => DigitalTwinProfile) => {
       setDraftState((prev) => {
-        const base = prev ?? ensureDraft();
-        const next = updater(base);
-        saveTwin(next);
-        persistDraftId(next.twinId);
+        if (!prev) {
+          // Caller bug: every screen that mutates the draft must guard with
+          // `if (!draft) return`. Warn instead of fabricating a fake twin.
+          console.warn(
+            "[TwinContext] updateDraft called with no draft; ignoring.",
+          );
+          return prev;
+        }
+        const next = updater(prev);
+        const saved = saveTwin(next);
+        if (saved) {
+          persistDraftId(saved.twinId);
+          // Use the saved copy (carries `lastSavedAtISO`) for in-memory.
+          return saved;
+        }
+        // Save failed — keep the in-memory edit so the producer's keystrokes
+        // aren't lost. The next edit will retry; the AppHeader still shows
+        // the previous lastSavedAtISO until persistence succeeds again.
         return next;
       });
     },
-    [ensureDraft],
+    [],
   );
 
   const advanceStudioStep = useCallback(() => {
@@ -138,6 +199,23 @@ export function TwinProvider({ children }: { children: ReactNode }) {
     if (prev) setStudioStep(prev);
   }, [studioStep]);
 
+  const useDemoSubject = useCallback((demoSubjectId: string): boolean => {
+    const subject = getDemoSubjectById(demoSubjectId);
+    if (!subject) {
+      console.warn(
+        `[TwinContext] useDemoSubject: unknown id "${demoSubjectId}"`,
+      );
+      return false;
+    }
+    const next = createDraftFromDemoSubject(subject);
+    const saved = saveTwin(next);
+    setDraftState(saved ?? next);
+    if (saved) persistDraftId(saved.twinId);
+    setScreen("S2");
+    setCompletedThroughStep((prev) => Math.max(prev, stepForScreen("S2")));
+    return true;
+  }, []);
+
   const value = useMemo<TwinContextValue>(
     () => ({
       screen,
@@ -148,13 +226,16 @@ export function TwinProvider({ children }: { children: ReactNode }) {
       goTo,
       goBack,
       goForward,
+      goHome,
       rejectToCustomMoments,
       setDraft,
       updateDraft,
       persistDraft,
+      clearDraft,
       setStudioStep,
       advanceStudioStep,
       backStudioStep,
+      useDemoSubject,
     }),
     [
       screen,
@@ -165,12 +246,15 @@ export function TwinProvider({ children }: { children: ReactNode }) {
       goTo,
       goBack,
       goForward,
+      goHome,
       rejectToCustomMoments,
       setDraft,
       updateDraft,
       persistDraft,
+      clearDraft,
       advanceStudioStep,
       backStudioStep,
+      useDemoSubject,
     ],
   );
 

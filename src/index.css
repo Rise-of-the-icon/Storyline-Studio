@@ -3,6 +3,152 @@
 @tailwind utilities;
 
 @layer base {
+  /* Body baseline. text-base = 16px so the default reading size is friendly
+     on phones without us having to hand-bump every paragraph. */
+  body {
+    @apply bg-bg font-body text-text antialiased;
+    /* Prevent any rogue child from stretching past the viewport at narrow
+       widths — RICON's longest fixed assets (the AppHeader subtitle row)
+       used to push horizontal scroll on 360px devices. */
+    overflow-x: hidden;
+  }
+
+  /* Honour iOS safe-area on the document root so absolutely-positioned
+     bars don't sit under the home indicator. */
+  html {
+    height: 100%;
+  }
+}
+
+@layer utilities {
+  /* ---------- Safe-area helpers (iOS notch + home indicator) ---------- */
+  /*
+   * Use these on the OUTSIDE of sticky/fixed shells (AppHeader top, S3/S4/S5
+   * footers, Modal sheets). They no-op on platforms without safe-area insets.
+   */
+  .pt-safe {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  .pb-safe {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+  .pl-safe {
+    padding-left: max(0px, env(safe-area-inset-left));
+  }
+  .pr-safe {
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  /* Used on the bottom of scrollable bodies that sit behind a fixed footer —
+     prevents content from being permanently hidden by the action bar. */
+  .pb-action-bar {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- Touch target ---------- */
+  /*
+   * Apply on any interactive element that the visual design has shrunk below
+   * 44x44. Wraps `min-h` + `min-w` so we don't need both tokens at every site.
+   */
+  .touch-target {
+    min-height: theme("spacing.touch");
+    min-width: theme("spacing.touch");
+  }
+
+  /* ---------- iOS form-zoom guard ---------- */
+  /*
+   * Mobile Safari zooms on focus when an input's computed font-size is < 16px.
+   * `text-input` keeps inputs at 16px on phones and shrinks to 14px (`text-sm`)
+   * on `sm:` and up. Apply on every <input>, <textarea>, <select>.
+   */
+  .text-input {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  @media (min-width: 640px) {
+    .text-input {
+      font-size: 14px;
+    }
+  }
+
+  /* ---------- ResponsivePanel breakpoint overrides ---------- */
+  /*
+   * The `<ResponsivePanel>` component renders as `<details>`. We want it to
+   * collapse on mobile (default browser behaviour) and *stay open* on a chosen
+   * breakpoint without JS. The cleanest path is to override the UA stylesheet
+   * at the breakpoint: show every non-summary child, then hide the summary
+   * (so there's no toggle on desktop). `[data-always-open-from]` lets the
+   * component pick its breakpoint declaratively.
+   */
+  @media (min-width: 768px) {
+    .responsive-panel[data-always-open-from="md"] > *:not(summary) {
+      display: block !important;
+    }
+    .responsive-panel[data-always-open-from="md"] > summary {
+      display: none !important;
+    }
+  }
+  @media (min-width: 1024px) {
+    .responsive-panel[data-always-open-from="lg"] > *:not(summary) {
+      display: block !important;
+    }
+    .responsive-panel[data-always-open-from="lg"] > summary {
+      display: none !important;
+    }
+  }
+  @media (min-width: 1280px) {
+    .responsive-panel[data-always-open-from="xl"] > *:not(summary) {
+      display: block !important;
+    }
+    .responsive-panel[data-always-open-from="xl"] > summary {
+      display: none !important;
+    }
+  }
+
+  /* ---------- dvh shim ---------- */
+  /*
+   * `100dvh` (dynamic viewport height) is the right unit for full-screen
+   * surfaces because it accounts for the moving iOS URL bar. We fall back
+   * to `100vh` for browsers that don't support `dvh`.
+   */
+  .h-dvh {
+    height: 100vh;
+    height: 100dvh;
+  }
+  .max-h-dvh {
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+
+  /* ---------- Branded skeleton shimmer ---------- */
+  /*
+   * Companion utility for the `shimmer` keyframe defined in
+   * tailwind.config.js. The keyframe animates `background-position`
+   * across a 200%-wide gradient; this class supplies the gradient,
+   * the 200% size, and the no-repeat tile so the band reads as a single
+   * sweep rather than a tiled wash.
+   *
+   * Gold hex is `#c9a84c` = rgb(201, 168, 76). We hold the centre stop
+   * at ~8% alpha so the sweep is felt, not seen — high enough to read
+   * as motion on dark surfaces, low enough that the static frame (under
+   * `prefers-reduced-motion`) doesn't draw the eye away from the
+   * editorial loading copy.
+   *
+   * Always pair with `motion-safe:animate-shimmer` and `aria-hidden="true"`
+   * on the consuming element — see `src/components/Skeleton.tsx`.
+   */
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(201, 168, 76, 0.08) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+  }
+}
+
+@layer base {
   body {
     @apply bg-bg font-body text-text antialiased;
   }

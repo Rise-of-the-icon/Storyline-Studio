@@ -1,7 +1,16 @@
 import { SCHEMA_VERSION, type DigitalTwinProfile } from "../types/twin";
 
-/** Minimal twin for storage harness tests (Prompt 0.2). */
-export function createMockTwin(name = "Test Subject"): DigitalTwinProfile {
+/**
+ * Storage-harness fixture only. NEVER reach for this from a real user flow —
+ * for an explicit demo subject in the wizard, use a `DEMO_SUBJECTS`
+ * entry from `src/data/demoSubjects.ts` and `createDraftFromDemoSubject`.
+ *
+ * The intentionally hokey copy below ("Storage harness fixture") makes it
+ * obvious in the UI if this ever leaks into a screen.
+ */
+export function createStorageTestTwin(
+  name: string = "Storage Test Twin",
+): DigitalTwinProfile {
   const twinId = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -11,11 +20,11 @@ export function createMockTwin(name = "Test Subject"): DigitalTwinProfile {
     consentAcknowledged: true,
     coreIdentity: { name },
     wikipedia: {
-      pageId: "mock-page",
+      pageId: "storage-harness-fixture",
       title: name,
-      summary: "Mock summary for storage test.",
-      description: "Mock description.",
-      sourceUrl: "https://en.wikipedia.org/wiki/Mock",
+      summary: "Storage harness fixture — not a real subject.",
+      description: "Storage harness fixture (dev-only)",
+      sourceUrl: "https://en.wikipedia.org/wiki/Special:BlankPage",
     },
     timeline: [],
     customMoments: [],

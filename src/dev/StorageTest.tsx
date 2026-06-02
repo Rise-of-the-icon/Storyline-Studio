@@ -10,7 +10,7 @@ import {
 } from "../lib/storage";
 import { sanitizeFreeText, wrapUntrustedUserData } from "../lib/sanitize";
 import { SCHEMA_VERSION } from "../types/twin";
-import { createMockTwin } from "./mockTwin";
+import { createStorageTestTwin } from "./mockTwin";
 
 type LogLine = { id: number; text: string };
 
@@ -29,10 +29,10 @@ export function StorageTest() {
   };
 
   const handleSave = () => {
-    const twin = createMockTwin("Storage Test Twin");
-    const ok = saveTwin(twin);
+    const twin = createStorageTestTwin();
+    const saved = saveTwin(twin);
     setLastTwinId(twin.twinId);
-    append(ok ? `✓ Saved twin ${twin.twinId}` : "✗ saveTwin failed");
+    append(saved ? `✓ Saved twin ${twin.twinId}` : "✗ saveTwin failed");
   };
 
   const handleReload = () => {

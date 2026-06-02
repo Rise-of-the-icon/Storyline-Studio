@@ -3,17 +3,21 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { useTwin } from "../../context/TwinContext";
 import { useStudio } from "../../context/StudioContext";
+import { isReviewResolved } from "../../lib/guardrails";
 import {
   evaluatePerformanceClearance,
   statusBadgeVariant,
 } from "../clearance";
 import { Phase2VisionModal } from "../Phase2VisionModal";
+import { VoiceContextPreview } from "../VoiceContextPreview";
 
 export function SS4GuardrailClearance() {
-  const { draft } = useTwin();
+  const { draft, goTo, setStudioStep } = useTwin();
   const { selectedEventId, resolverOutput } = useStudio();
   const [finalized, setFinalized] = useState(false);
   const [phase2Open, setPhase2Open] = useState(false);
+
+  const selectedEvent = draft?.timeline.find((e) => e.id === selectedEventId);
 
   const clearance = useMemo(() => {
     if (!draft) {
@@ -31,6 +35,11 @@ export function SS4GuardrailClearance() {
   }, [draft, selectedEventId, resolverOutput]);
 
   const canFinalize = clearance.status !== "block" && !finalized;
+  const missingEvent = !selectedEvent;
+  const missingResolver = Boolean(selectedEvent && !resolverOutput);
+  const unresolvedGuardrails = draft
+    ? !draft.guardrailReviews.every(isReviewResolved)
+    : false;
 
   const handleFinalize = () => {
     if (!canFinalize) return;
@@ -43,30 +52,42 @@ export function SS4GuardrailClearance() {
     );
   }
 
-  if (finalized) {
+  if (finalized && selectedEvent && resolverOutput) {
     return (
-      <div className="text-center">
-        <div
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-ok bg-okfaint font-display text-3xl text-ok"
-          aria-hidden="true"
-        >
-          ✓
+      <div className="space-y-8">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-ok bg-okfaint font-display text-xl text-ok"
+            aria-hidden="true"
+          >
+            ✓
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-ok">
+              Performance context locked
+            </p>
+            <p className="font-body text-sm text-textsub">
+              Phase 1 (emotional resolution) is complete for this session.
+            </p>
+          </div>
         </div>
-        <h2 className="mt-4 font-display text-3xl tracking-wide text-text">
-          Voice generation ready
-        </h2>
-        <p className="mt-2 font-body text-sm text-textsub">
-          Performance context is locked for this session. Phase 1 (emotional
-          resolution) is complete in this build.
-        </p>
-        <p className="mt-4 font-mono text-xs text-textmuted">
-          Resolved: {resolverOutput?.signatureState ?? "—"}
-        </p>
-        <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Button variant="primary" onClick={() => setPhase2Open(true)}>
+
+        <VoiceContextPreview
+          draft={draft}
+          event={selectedEvent}
+          resolver={resolverOutput}
+          onEditEmotionalContext={() => {
+            setFinalized(false);
+            setStudioStep("SS3");
+          }}
+        />
+
+        <div className="border-t border-border pt-6">
+          <Button variant="ghost" size="small" onClick={() => setPhase2Open(true)}>
             View Phase 2 roadmap
           </Button>
         </div>
+
         <Phase2VisionModal
           open={phase2Open}
           onClose={() => setPhase2Open(false)}
@@ -79,8 +100,9 @@ export function SS4GuardrailClearance() {
     <div>
       <h2 className="font-display text-2xl text-text">Guardrail clearance</h2>
       <p className="mt-2 font-body text-sm text-textsub">
-        Final check of producer flags and resolver warnings before you lock the
-        performance context.
+        Before saving this voice direction, confirm the timeline moment,
+        emotional settings, and producer-review flags. Locking the performance
+        context keeps this resolver result for the current session.
       </p>
 
       <div className="mt-6 rounded-lg border border-border bg-panel p-4">
@@ -106,14 +128,40 @@ export function SS4GuardrailClearance() {
       </div>
 
       {clearance.status === "block" && (
-        <p
+        <div
           id="ss4-finalize-helper"
-          className="mt-4 font-body text-sm text-danger"
+          className="mt-4 rounded-md border border-danger/30 bg-dangerfaint p-3"
           role="status"
         >
-          Resolve blockers above (select an event, clear producer guardrails in
-          onboarding) before finalizing.
-        </p>
+          <p className="font-body text-sm text-danger">
+            Complete the required actions before finalizing.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {missingEvent && (
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => setStudioStep("SS1")}
+              >
+                Choose anchoring event
+              </Button>
+            )}
+            {missingResolver && (
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => setStudioStep("SS2")}
+              >
+                Review scene context
+              </Button>
+            )}
+            {unresolvedGuardrails && (
+              <Button variant="secondary" size="small" onClick={() => goTo("S5")}>
+                Review producer guardrails
+              </Button>
+            )}
+          </div>
+        </div>
       )}
 
       <Button

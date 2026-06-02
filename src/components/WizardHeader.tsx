@@ -1,16 +1,17 @@
 import { useTwin } from "../context/TwinContext";
-import { ProgressBar } from "./ProgressBar";
 import { TwinContextSummary } from "./TwinContextSummary";
+import { WizardStepper } from "./WizardStepper";
 
 export function WizardHeader() {
-  const { wizardStep, completedThroughStep } = useTwin();
+  const { screen, completedThroughStep, goTo } = useTwin();
 
   return (
     <header className="border-b border-border bg-surface/80">
       <div className="mx-auto max-w-[680px] px-4 py-4">
-        <ProgressBar
-          currentStep={wizardStep}
-          completedThrough={completedThroughStep}
+        <WizardStepper
+          currentScreen={screen}
+          completedThroughStep={completedThroughStep}
+          onSelect={goTo}
         />
         <TwinContextSummary />
       </div>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type BadgeVariant = "gold" | "blue" | "ok" | "danger" | "muted";
+type BadgeVariant = "gold" | "blue" | "ok" | "danger" | "muted" | "warning";
 
 export interface BadgeProps {
   variant?: BadgeVariant;
@@ -13,6 +13,9 @@ const variantClass: Record<BadgeVariant, string> = {
   ok: "border-ok/40 bg-okfaint text-ok",
   danger: "border-danger/40 bg-dangerfaint text-danger",
   muted: "border-border bg-panel text-textsub",
+  // Advisory (e.g. disambiguation). Uses Tailwind amber to stay distinct
+  // from gold (music domain) and danger (errors); see Badge.tsx note.
+  warning: "border-amber-500/40 bg-amber-950/40 text-amber-300",
 };
 
 export function Badge({ variant = "muted", children }: BadgeProps) {

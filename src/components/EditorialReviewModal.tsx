@@ -86,7 +86,7 @@ export function EditorialReviewModal({
             href={sourceUrl}
             target="_blank"
             rel="noreferrer"
-            className="break-all font-body text-sm text-lightblue hover:text-gold focus:outline-none focus:ring-2 focus:ring-gold"
+            className="break-all font-body text-sm text-lightblue hover:text-gold focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-gold"
           >
             {sourceUrl}
           </a>

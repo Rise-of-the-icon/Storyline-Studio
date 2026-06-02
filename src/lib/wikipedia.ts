@@ -1,18 +1,25 @@
 import { SCHEMA_VERSION, type DigitalTwinProfile, type WikipediaProfile } from "../types/twin";
-import { searchDemoSubjects, type DemoSearchSubject } from "./mockData";
-import { classifyHits, type SubjectDomain } from "./subjectDomain";
+import { searchDemoSubjects, type DemoSubject } from "../data/demoSubjects";
+import { classifyHits, type SearchResultDomain } from "./subjectDomain";
 
 const WIKI_SEARCH = "https://en.wikipedia.org/w/rest.php/v1/search/page";
 const WIKI_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/";
 
 export type SearchSource = "live" | "demo";
+/**
+ * Why the live API didn't supply results, if applicable. Drives S1's banner /
+ * dedicated error empty-state copy.
+ */
+export type SearchErrorCode = "unavailable" | "rate-limited";
 
 export interface WikipediaSearchHit {
   pageId: string;
   title: string;
   description: string;
-  domain: SubjectDomain;
+  domain: SearchResultDomain;
   thumbnailUrl?: string;
+  /** True when the page looks like a Wikipedia disambiguation page. */
+  isDisambiguation?: boolean;
   /** Present when this hit maps to a full local demo twin. */
   demoSubjectId?: string;
 }
@@ -20,12 +27,36 @@ export interface WikipediaSearchHit {
 export interface WikipediaSearchResponse {
   results: WikipediaSearchHit[];
   source: SearchSource;
-  /** Live Wikipedia returned pages but none matched sports/music filter. */
-  allFilteredByDomain?: boolean;
+  /**
+   * Set when the live API failed and the response is a demo fallback (or
+   * empty). UI surfaces a "Search is unavailable" banner in this case.
+   */
+  error?: SearchErrorCode;
 }
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").trim();
+}
+
+/**
+ * Heuristic disambiguation detection from the search-result row. Wikipedia's
+ * `/v1/search/page` endpoint doesn't tag disambiguation pages directly, so we
+ * lean on two near-universal signals:
+ *   - title ends with "(disambiguation)" (case-insensitive)
+ *   - excerpt contains "may refer to" / "may also refer to" /
+ *     "is a disambiguation page"
+ * Confirmation happens at fetch time via `WIKI_SUMMARY.type === "disambiguation"`
+ * but is too expensive to do for every row at search time.
+ */
+export function detectDisambiguation(title: string, excerpt: string): boolean {
+  if (/\(disambiguation\)\s*$/i.test(title.trim())) return true;
+  const lower = excerpt.toLowerCase();
+  return (
+    lower.includes("may refer to") ||
+    lower.includes("may also refer to") ||
+    lower.includes("is a disambiguation page") ||
+    lower.includes("disambiguation page providing links")
+  );
 }
 
 export async function searchWikipedia(
@@ -48,7 +79,10 @@ export async function searchWikipedia(
     });
 
     if (!res.ok) {
-      throw new Error(`Wikipedia search failed (${res.status})`);
+      const code: SearchErrorCode = res.status === 429 ? "rate-limited" : "unavailable";
+      throw Object.assign(new Error(`Wikipedia search failed (${res.status})`), {
+        searchErrorCode: code,
+      });
     }
 
     const data = (await res.json()) as {
@@ -60,33 +94,36 @@ export async function searchWikipedia(
       }>;
     };
 
-    const rawHits = (data.pages ?? []).map((page) => ({
-      pageId: String(page.id),
-      title: page.title,
-      description: stripHtml(page.excerpt ?? ""),
-      thumbnailUrl: page.thumbnail?.url,
-    }));
+    const rawHits = (data.pages ?? []).map((page) => {
+      const description = stripHtml(page.excerpt ?? "");
+      return {
+        pageId: String(page.id),
+        title: page.title,
+        description,
+        thumbnailUrl: page.thumbnail?.url,
+        isDisambiguation: detectDisambiguation(page.title, description),
+      };
+    });
 
-    const rawCount = rawHits.length;
     const { classified } = await classifyHits(rawHits, signal);
     const results: WikipediaSearchHit[] = classified.map(({ hit, domain }) => ({
       ...hit,
       domain,
     }));
 
-    return {
-      results,
-      source: "live",
-      allFilteredByDomain: rawCount > 0 && results.length === 0,
-    };
-  } catch (err) {
+    return { results, source: "live" };
+  } catch (err: unknown) {
     if (signal?.aborted) {
       return { results: [], source: "live" };
     }
+    const errorCode: SearchErrorCode =
+      (err as { searchErrorCode?: SearchErrorCode })?.searchErrorCode ??
+      "unavailable";
     console.warn("[wikipedia] search fallback to demo subjects", err);
     return {
       results: searchDemoSubjects(q),
       source: "demo",
+      error: errorCode,
     };
   }
 }
@@ -146,7 +183,7 @@ export function createDraftFromWikipedia(
   };
 }
 
-export function createDraftFromDemoSubject(subject: DemoSearchSubject): DigitalTwinProfile {
+export function createDraftFromDemoSubject(subject: DemoSubject): DigitalTwinProfile {
   const template = subject.buildTwin();
   return {
     ...template,

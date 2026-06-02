@@ -1,22 +1,124 @@
 import { useMemo, useState } from "react";
 import { Badge } from "../components/Badge";
+import { SourceBadge, VisibilityBadge } from "../components/badges";
 import { Button } from "../components/Button";
 import {
   CustomMomentDrawer,
   type CustomMomentSavePayload,
 } from "../components/CustomMomentDrawer";
+import { EmptyState } from "../components/EmptyState";
 import { useTwin } from "../context/TwinContext";
+import {
+  getDisplaySensitivity,
+  getMomentDisplay,
+} from "../lib/contentModel";
 import { evaluateGuardrails } from "../lib/guardrails";
-import type { CustomMoment, TimelineEvent } from "../types/twin";
+import {
+  CUSTOM_MOMENT_MEDIA_TYPE_LABEL,
+  getYouTubeEmbedUrl,
+  validateCustomMomentMediaInput,
+} from "../lib/customMomentMedia";
+import { CUSTOM_EMPTY_DESCRIPTION } from "../lib/stateCopy";
+import type {
+  CustomMoment,
+  CustomMomentMedia,
+  TimelineEvent,
+} from "../types/twin";
+
+function MediaPreview({ item }: { item: CustomMomentMedia }) {
+  const label =
+    item.label ||
+    item.fileName ||
+    `${CUSTOM_MOMENT_MEDIA_TYPE_LABEL[item.type]} attachment`;
+
+  if (item.type === "image") {
+    return (
+      <a href={item.url} target="_blank" rel="noreferrer">
+        <img
+          src={item.url}
+          alt={label}
+          loading="lazy"
+          className="max-h-48 w-full rounded border border-border bg-panel object-cover"
+        />
+      </a>
+    );
+  }
+
+  if (item.type === "video") {
+    return (
+      <video
+        controls
+        preload="metadata"
+        aria-label={label}
+        className="max-h-56 w-full rounded border border-border bg-panel"
+      >
+        <source src={item.url} />
+        <a href={item.url} target="_blank" rel="noreferrer">
+          Open video
+        </a>
+      </video>
+    );
+  }
+
+  const embedUrl = getYouTubeEmbedUrl(item.url);
+  if (!embedUrl) return null;
+  return (
+    <iframe
+      src={embedUrl}
+      title={label}
+      loading="lazy"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowFullScreen
+      className="aspect-video w-full rounded border border-border bg-panel"
+    />
+  );
+}
+
+function MediaAttachment({ item }: { item: CustomMomentMedia }) {
+  const error = validateCustomMomentMediaInput({
+    type: item.type,
+    url: item.url,
+    label: item.label ?? "",
+  });
+  if (error) {
+    return (
+      <p className="rounded border border-danger/30 bg-dangerfaint px-2 py-1 font-mono text-[11px] text-danger">
+        Media unavailable - attachment URL is invalid.
+      </p>
+    );
+  }
+
+  return (
+    <figure>
+      <MediaPreview item={item} />
+      <figcaption className="mt-1 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] text-textmuted">
+        <span>
+          {CUSTOM_MOMENT_MEDIA_TYPE_LABEL[item.type]}
+          {item.label ? ` · ${item.label}` : ""}
+        </span>
+        {item.type === "youtube" || !item.url.startsWith("data:") ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-lightblue underline decoration-lightblue/40 underline-offset-2 hover:text-text"
+          >
+            Open source
+          </a>
+        ) : (
+          <span>Uploaded file</span>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
 
 function TimelineReference({ events }: { events: TimelineEvent[] }) {
   const approved = events.filter((e) => e.approvalStatus === "Reviewed");
 
   if (approved.length === 0) {
     return (
-      <p className="font-body text-sm text-textsub">
-        No approved timeline events yet — approve events in the previous step.
-      </p>
+      <EmptyState description="No approved timeline events yet — approve events in the previous step." />
     );
   }
 
@@ -80,6 +182,8 @@ export function S4CustomMoments() {
       description: moment.description,
       emotionalSignificance: moment.emotionalSignificance,
       sourceNotes: moment.sourceNotes,
+      source: moment.source,
+      media: moment.media,
       visibility: moment.visibility,
       sensitivity: moment.sensitivity,
     };
@@ -100,20 +204,23 @@ export function S4CustomMoments() {
 
   if (!draft) {
     return (
-      <div className="mx-auto max-w-[680px] px-4 py-16 text-center">
-        <h1 className="font-display text-2xl text-text">Custom moments</h1>
-        <p className="mt-2 font-body text-sm text-textsub">
-          No draft loaded — start from search.
-        </p>
-        <Button className="mt-4" variant="primary" onClick={() => goTo("S1")}>
-          Go to search
-        </Button>
+      <div className="mx-auto max-w-[680px] px-4 py-16">
+        <EmptyState
+          eyebrow="S4 · Custom moments"
+          title="No draft loaded"
+          description="Start a digital twin from search to add custom moments."
+          action={
+            <Button variant="primary" onClick={() => goTo("S1")}>
+              Go to search
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[900px] px-4 pb-28 pt-6">
+    <div className="mx-auto max-w-[900px] px-4 pb-action-bar pt-6">
       <h1 className="font-display text-3xl tracking-wide text-text">
         Custom moments
       </h1>
@@ -152,65 +259,98 @@ export function S4CustomMoments() {
           </div>
 
           {sortedMoments.length === 0 ? (
-            <div className="mt-6 rounded-lg border border-dashed border-border bg-card/40 px-6 py-12 text-center">
-              <p className="font-body text-sm text-textsub">
-                No custom moments yet — add the behind-the-scenes beats databases
-                miss.
-              </p>
-              <Button className="mt-4" variant="secondary" onClick={openAdd}>
-                Add your first moment
-              </Button>
-            </div>
+            <EmptyState
+              className="mt-6"
+              description={CUSTOM_EMPTY_DESCRIPTION}
+              action={
+                <Button variant="secondary" onClick={openAdd}>
+                  Add your first moment
+                </Button>
+              }
+            />
           ) : (
             <ul className="mt-4 space-y-3">
-              {sortedMoments.map((moment) => (
-                <li
-                  key={moment.id}
-                  className="rounded-lg border border-border bg-card p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-body font-medium text-text">
-                        {moment.title}
-                      </h3>
-                      {moment.date && (
-                        <p className="mt-0.5 font-mono text-xs text-textsub">
-                          {moment.date}
+              {sortedMoments.map((moment) => {
+                const display = getMomentDisplay(moment);
+                const sensitivity = getDisplaySensitivity(moment.sensitivity);
+                return (
+                  <li
+                    key={moment.id}
+                    className="rounded-lg border border-border bg-card p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-body font-medium text-text">
+                          {moment.title}
+                        </h3>
+                        {moment.date && (
+                          <p className="mt-0.5 font-mono text-xs text-textsub">
+                            {moment.date}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <SourceBadge
+                          sourceType={display.sourceType}
+                          verified={display.sourceVerified}
+                          sourceUrl={display.sourceUrl}
+                        />
+                        <VisibilityBadge level={display.visibility} />
+                        <Badge
+                          variant={sensitivity === "high" ? "danger" : "muted"}
+                        >
+                          Sensitivity · {sensitivity}
+                        </Badge>
+                      </div>
+                    </div>
+                    <p className="mt-2 line-clamp-2 font-body text-sm text-textsub">
+                      {moment.description}
+                    </p>
+                    {moment.sourceNotes && (
+                      <p className="mt-2 line-clamp-2 font-mono text-[11px] text-textsub">
+                        <span className="text-textmuted">Source notes — </span>
+                        {moment.sourceNotes}
+                      </p>
+                    )}
+                    {moment.media && moment.media.length > 0 && (
+                      <div className="mt-3 space-y-3">
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-textmuted">
+                          Media ({moment.media.length})
                         </p>
-                      )}
-                    </div>
-                    <div className="flex gap-1">
-                      <Badge variant="muted">{moment.visibility}</Badge>
-                      <Badge
-                        variant={
-                          moment.sensitivity === "High" ? "danger" : "muted"
-                        }
+                        {moment.media.map((item) => (
+                          <MediaAttachment key={item.id} item={item} />
+                        ))}
+                      </div>
+                    )}
+                    {!display.sourceVerified && (
+                      <p
+                        className="mt-2 rounded border border-danger/30 bg-dangerfaint px-2 py-1 font-mono text-[11px] text-danger"
+                        role="note"
                       >
-                        {moment.sensitivity}
-                      </Badge>
+                        Unverified — not presented as fact in the studio.
+                      </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        className="touch-target"
+                        onClick={() => openEdit(moment)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="small"
+                        className="touch-target"
+                        onClick={() => handleDelete(moment.id)}
+                      >
+                        Delete
+                      </Button>
                     </div>
-                  </div>
-                  <p className="mt-2 line-clamp-2 font-body text-sm text-textsub">
-                    {moment.description}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="small"
-                      onClick={() => openEdit(moment)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="small"
-                      onClick={() => handleDelete(moment.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -227,12 +367,16 @@ export function S4CustomMoments() {
         onSave={handleSave}
       />
 
-      <footer className="fixed bottom-0 left-0 right-0 border-t border-border bg-surface/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-[900px] items-center justify-between gap-3 px-4 py-4">
-          <Button variant="ghost" onClick={goBack}>
+      <footer className="fixed bottom-0 left-0 right-0 border-t border-border bg-surface/95 pb-safe backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[900px] items-center justify-between gap-3 px-4 py-3 sm:py-4">
+          <Button variant="ghost" onClick={goBack} className="touch-target">
             ← Back
           </Button>
-          <Button variant="primary" onClick={() => goTo("S5")}>
+          <Button
+            variant="primary"
+            onClick={() => goTo("S5")}
+            className="touch-target"
+          >
             Continue →
           </Button>
         </div>

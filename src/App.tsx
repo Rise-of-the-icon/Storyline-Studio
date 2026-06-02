@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
-import { TopBar } from "./components/TopBar";
+import { AppHeader } from "./components/AppHeader";
+import { StepTransition } from "./components/StepTransition";
 import { WizardHeader } from "./components/WizardHeader";
 import { TwinProvider, useTwin } from "./context/TwinContext";
 import { GuardrailsTest } from "./dev/GuardrailsTest";
@@ -42,10 +43,15 @@ function AppRoutes() {
       >
         Skip to main content
       </a>
-      <TopBar />
+      <AppHeader />
       {showWizardHeader && <WizardHeader />}
       <main id="main-content" tabIndex={-1} aria-label="RICON Voice Research Studio">
-        <Screen />
+        {/* Keyed on `screen` so React unmounts + remounts the wrapper on
+            every wizard transition, re-firing the fade-in animation.
+            Reduced-motion users land instantly (motion-safe:-gated). */}
+        <StepTransition key={screen}>
+          <Screen />
+        </StepTransition>
         {showDevHarness && (
           <div className="border-t border-border">
             <StorageTest />

@@ -5,8 +5,9 @@ import type {
   TimelineEvent,
   WikipediaProfile,
 } from "../types/twin";
+import { makeWikipediaSource } from "./contentModel";
 import { evaluateGuardrails } from "./guardrails";
-import { buildMichaelJordanTwin, buildThinProfileTwin } from "./mockData";
+import { getDemoSubjectById } from "../data/demoSubjects";
 
 export interface ImportBundle {
   timeline: TimelineEvent[];
@@ -15,17 +16,6 @@ export interface ImportBundle {
 }
 
 const IMPORT_DELAY_MS = 1100;
-
-function wikiSource(wikipedia: WikipediaProfile) {
-  return {
-    type: "wikipedia" as const,
-    url: wikipedia.sourceUrl,
-    citation: "Wikipedia",
-    verified: true,
-    importedAtISO: new Date().toISOString(),
-    revisionId: wikipedia.revisionId,
-  };
-}
 
 function makeEvent(
   wikipedia: WikipediaProfile,
@@ -45,7 +35,10 @@ function makeEvent(
     decade,
     approvalStatus: "Draft",
     sensitivity: "Low",
-    source: wikiSource(wikipedia),
+    visibility: "Internal",
+    category: partial.eventType,
+    summary: partial.description,
+    source: makeWikipediaSource(wikipedia.sourceUrl, wikipedia.revisionId),
   };
 }
 
@@ -69,7 +62,20 @@ function inferEventType(sentence: string): EventType {
   return "Career";
 }
 
-/** Heuristic timeline from Wikipedia summary text (no AI). */
+/**
+ * Heuristic timeline from Wikipedia summary text (no AI).
+ *
+ * Conservative: only emits events for sentences that yield a real birth year
+ * or a 4-digit year embedded in the text. When extraction yields nothing,
+ * returns an empty array — S3's timeline-empty surface ("No reliable timeline
+ * events were found. Add custom moments to continue.") is the right place to
+ * handle that, not a noisy "Wikipedia profile imported" filler row that
+ * tricks the producer into thinking the import succeeded.
+ *
+ * For demo subjects we never reach this code path — `generateImportBundle`
+ * dispatches to the curated demo fixtures in `src/data/demoSubjects.ts`
+ * before falling through to the heuristic.
+ */
 function generateHeuristicTimeline(wikipedia: WikipediaProfile): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   const birthYear = extractBirthYear(wikipedia);
@@ -114,25 +120,13 @@ function generateHeuristicTimeline(wikipedia: WikipediaProfile): TimelineEvent[]
     );
   }
 
-  if (events.length === 0) {
-    events.push(
-      makeEvent(wikipedia, {
-        title: `Wikipedia profile imported`,
-        description: wikipedia.summary || wikipedia.description,
-        year: new Date().getFullYear() - 5,
-        eventType: "Historical",
-        confidence: "Medium",
-        emotionalSignificance: 40,
-      }),
-    );
-  }
-
   return events.sort((a, b) => a.year - b.year);
 }
 
 /**
  * Generate timeline (+ optional demo custom moments) for S2 import.
- * Uses seeded mockData for demo subjects; heuristic parsing for live Wikipedia.
+ * Uses seeded demo subjects (`src/data/demoSubjects.ts`) for demo profiles;
+ * heuristic parsing for live Wikipedia.
  */
 export async function generateImportBundle(
   draft: DigitalTwinProfile,
@@ -141,17 +135,9 @@ export async function generateImportBundle(
 
   const { wikipedia } = draft;
 
-  if (wikipedia.pageId === "demo-michael-jordan") {
-    const twin = buildMichaelJordanTwin();
-    return {
-      timeline: twin.timeline,
-      customMoments: twin.customMoments,
-      guardrailReviews: twin.guardrailReviews,
-    };
-  }
-
-  if (wikipedia.pageId === "demo-thin-profile") {
-    const twin = buildThinProfileTwin();
+  const demoSubject = getDemoSubjectById(wikipedia.pageId);
+  if (demoSubject) {
+    const twin = demoSubject.buildTwin();
     return {
       timeline: twin.timeline,
       customMoments: twin.customMoments,

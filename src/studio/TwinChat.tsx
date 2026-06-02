@@ -5,25 +5,67 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent,
 } from "react";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
-import { askTwin, collectVerifiedFacts, type TwinReply } from "../lib/ai";
+import { useStudio } from "../context/StudioContext";
+import { useTwin } from "../context/TwinContext";
+import {
+  askTwinScoped,
+  getChatGate,
+  isEmptyChatPrompt,
+  type ChatGateStatus,
+  type ScopedChatReply,
+} from "../lib/ai";
 import type { DigitalTwinProfile } from "../types/twin";
+import {
+  CHAT_DEMO_BADGE_LABEL,
+  CHAT_DEMO_DISCLAIMER,
+  CHAT_ERROR_DESCRIPTION,
+  CHAT_ERROR_RETRY_LABEL,
+  CHAT_ERROR_TITLE,
+  CHAT_EYEBROW,
+  CHAT_GATE_NO_APPROVED_CTA,
+  CHAT_GATE_NO_APPROVED_DESCRIPTION,
+  CHAT_GATE_NO_SELECTED_CTA,
+  CHAT_GATE_NO_SELECTED_DESCRIPTION,
+  CHAT_LOADING_TITLE,
+  CHAT_PLACEHOLDER,
+  CHAT_PROMPT_CHIP_ARIA_PREFIX,
+  CHAT_PROMPT_CHIPS,
+  CHAT_SEND_ARIA_LABEL,
+  CHAT_SEND_GLYPH,
+  CHAT_SOURCE_ARIA_PREFIX,
+  CHAT_SOURCE_PREFIX,
+  CHAT_SUBHEADING,
+} from "./studioCopy";
 
+/**
+ * Public for `ai.gates.test.ts` — every twin response is rendered with
+ * the same AI-generated label. Kept as a re-export so existing tests don't
+ * have to adopt the new `CHAT_*` import surface in lockstep.
+ */
 export const AI_GENERATED_LABEL = "AI-generated";
 
-export type TwinChatUiState = "idle" | "streaming" | "refusal" | "error";
+export type TwinChatUiState = "idle" | "loading" | "error";
 
-interface ChatMessage {
+/** Stable demo think-delay so the loading bubble is visible but cheap. */
+const THINK_MS = 320;
+
+interface AssistantMessage {
   id: string;
-  role: "user" | "twin";
-  text: string;
-  kind?: TwinReply["kind"];
+  role: "assistant";
+  reply: ScopedChatReply;
 }
 
-const THINK_MS = 380;
-const CHAR_MS = 14;
+interface UserMessage {
+  id: string;
+  role: "user";
+  text: string;
+}
+
+type ChatMessage = UserMessage | AssistantMessage;
 
 export interface TwinChatProps {
   draft: DigitalTwinProfile;
@@ -37,82 +79,66 @@ async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function streamReveal(
-  fullText: string,
-  onPartial: (text: string) => void,
-  shouldAbort: () => boolean,
-): Promise<boolean> {
-  const reduced = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
-  if (reduced) {
-    onPartial(fullText);
-    return !shouldAbort();
-  }
-  for (let i = 1; i <= fullText.length; i++) {
-    if (shouldAbort()) return false;
-    onPartial(fullText.slice(0, i));
-    await delay(CHAR_MS);
-  }
-  return !shouldAbort();
-}
-
 export function TwinChat({ draft }: TwinChatProps) {
   const formId = useId();
   const outputId = useId();
+  const inputId = `${formId}-input`;
+  const hintId = `${formId}-hint`;
+
+  const { selectedEventId, scene, resolverOutput } = useStudio();
+  const { goTo, setStudioStep } = useTwin();
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef(false);
   const lastPromptRef = useRef("");
+  const abortRef = useRef(false);
 
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [uiState, setUiState] = useState<TwinChatUiState>("idle");
-  const [streamingText, setStreamingText] = useState<string | null>(null);
-  const [errorCopy, setErrorCopy] = useState<string | null>(null);
 
-  const verifiedCount = collectVerifiedFacts(draft).length;
-  const busy = uiState === "streaming";
+  const gate: ChatGateStatus = getChatGate(draft, selectedEventId);
+  const gated = gate.status !== "ready";
+  const loading = uiState === "loading";
+  const erroring = uiState === "error";
+
+  // Reset the message thread when the producer changes the anchoring event —
+  // the previous answers cite a different source so showing them above the
+  // new event's responses would be misleading.
+  useEffect(() => {
+    setMessages([]);
+    setUiState("idle");
+    lastPromptRef.current = "";
+    abortRef.current = false;
+  }, [selectedEventId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({
       top: listRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, streamingText, uiState]);
+  }, [messages, uiState]);
 
-  const finalizeTwinMessage = useCallback(
-    (reply: TwinReply, streamedText: string) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: newId(),
-          role: "twin",
-          text: streamedText,
-          kind: reply.kind,
-        },
-      ]);
-      setStreamingText(null);
-      setUiState(reply.kind === "refusal" ? "refusal" : "idle");
-    },
-    [],
-  );
+  const focusInput = useCallback(() => {
+    textareaRef.current?.focus();
+  }, []);
 
-  const runAsk = useCallback(
-    async (prompt: string) => {
-      const trimmed = prompt.trim();
-      if (!trimmed || busy) return;
+  const sendPrompt = useCallback(
+    async (promptValue: string) => {
+      const trimmed = promptValue.trim();
+      if (isEmptyChatPrompt(trimmed)) return;
+      if (gate.status !== "ready") return;
+      if (loading) return;
 
       lastPromptRef.current = trimmed;
       abortRef.current = false;
-      setErrorCopy(null);
-      setUiState("streaming");
-      setStreamingText(null);
 
       setMessages((prev) => [
         ...prev,
-        { id: newId(), role: "user", text: trimmed },
+        { id: newId(), role: "user", text: trimmed } satisfies UserMessage,
       ]);
       setInput("");
+      setUiState("loading");
 
       try {
         await delay(THINK_MS);
@@ -121,67 +147,79 @@ export function TwinChat({ draft }: TwinChatProps) {
           return;
         }
 
-        const reply = await askTwin({ twin: draft }, trimmed);
+        const reply = await askTwinScoped(
+          {
+            twin: draft,
+            selectedEventId,
+            scene,
+            resolverOutput,
+          },
+          trimmed,
+        );
+
         if (abortRef.current) {
           setUiState("idle");
           return;
         }
 
-        let accumulated = "";
-        const completed = await streamReveal(
-          reply.text,
-          (partial) => {
-            accumulated = partial;
-            setStreamingText(partial);
-          },
-          () => abortRef.current,
-        );
-
-        if (!completed) {
-          setStreamingText(null);
-          setUiState("idle");
+        if (!reply) {
+          setUiState("error");
           return;
         }
 
-        finalizeTwinMessage(reply, accumulated);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: newId(),
+            role: "assistant",
+            reply,
+          } satisfies AssistantMessage,
+        ]);
+        setUiState("idle");
       } catch {
-        setStreamingText(null);
-        setErrorCopy(
-          "Something went wrong generating a reply. Your draft is still safe — try again.",
-        );
-        setUiState("error");
+        if (!abortRef.current) {
+          setUiState("error");
+        }
       }
     },
-    [busy, draft, finalizeTwinMessage],
+    [draft, gate.status, loading, resolverOutput, scene, selectedEventId],
   );
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    void runAsk(input);
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (isEmptyChatPrompt(input)) return;
+    if (gated || loading) return;
+    void sendPrompt(input);
   };
 
-  const handleStop = () => {
-    abortRef.current = true;
-    setStreamingText(null);
-    setUiState("idle");
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (isEmptyChatPrompt(input) || gated || loading) return;
+      void sendPrompt(input);
+    }
+  };
+
+  const handleChipClick = (label: string) => {
+    setInput(label);
+    focusInput();
   };
 
   const handleRetry = () => {
     if (!lastPromptRef.current) {
       setUiState("idle");
-      setErrorCopy(null);
       return;
     }
-    setMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (last?.role === "user" && last.text === lastPromptRef.current) {
-        return prev.slice(0, -1);
-      }
-      return prev;
-    });
-    setErrorCopy(null);
-    void runAsk(lastPromptRef.current);
+    void sendPrompt(lastPromptRef.current);
   };
+
+  const handleSourceClick = () => {
+    setStudioStep("SS1");
+  };
+
+  const gateHintCopy = gateHint(gate);
+  const sendDisabled =
+    gated || loading || isEmptyChatPrompt(input) || erroring;
 
   return (
     <section
@@ -190,178 +228,292 @@ export function TwinChat({ draft }: TwinChatProps) {
     >
       <div className="shrink-0 px-4 pt-3">
         <p className="font-mono text-[10px] uppercase tracking-widest text-textmuted">
-          Digital Twin
+          {CHAT_EYEBROW}
         </p>
         <p className="mt-1 font-body text-[11px] leading-snug text-textsub">
-          Mock chat — answers only from reviewed timeline facts.
+          {CHAT_SUBHEADING}
         </p>
-        {verifiedCount === 0 && (
-          <p className="mt-2 font-body text-[11px] text-gold">
-            Approve events in timeline review to unlock grounded answers.
-          </p>
-        )}
       </div>
 
       <div
         ref={listRef}
         id={outputId}
-        className="min-h-[120px] flex-1 overflow-y-auto px-4 py-3"
+        className="min-h-[140px] flex-1 overflow-y-auto px-4 py-3"
         aria-live="polite"
         aria-relevant="additions text"
-        aria-busy={busy}
+        aria-busy={loading}
       >
-        {messages.length === 0 && uiState === "idle" && !streamingText && (
+        {messages.length === 0 && !loading && !erroring && gate.status === "ready" && (
           <p className="font-body text-xs text-textmuted">
-            Ask about a reviewed moment — e.g. a championship or career milestone.
+            Anchoring event:{" "}
+            <span className="text-text">
+              {gate.event.title}
+              {typeof gate.event.year === "number"
+                ? ` · ${gate.event.year}`
+                : ""}
+            </span>
+            . Try a prompt chip below or ask your own question — answers cite
+            this event.
           </p>
         )}
 
         <ul className="space-y-3">
-          {messages.map((msg) => (
-            <li key={msg.id}>
-              {msg.role === "user" ? (
-                <div className="rounded-md border border-bordermid bg-card px-3 py-2">
-                  <p className="font-mono text-[10px] uppercase text-textmuted">
-                    You
-                  </p>
-                  <p className="mt-1 font-body text-sm text-text">{msg.text}</p>
-                </div>
+          {messages.map((message) => (
+            <li key={message.id}>
+              {message.role === "user" ? (
+                <UserBubble text={message.text} />
               ) : (
-                <TwinReplyBubble
-                  text={msg.text}
-                  kind={msg.kind ?? "answer"}
+                <AssistantBubble
+                  reply={message.reply}
+                  onSourceClick={handleSourceClick}
                 />
               )}
             </li>
           ))}
         </ul>
 
-        {streamingText !== null && (
-          <div className="mt-3">
-            <TwinReplyBubble text={streamingText} kind="answer" inProgress />
-          </div>
+        {loading && (
+          <LoadingBubble />
         )}
 
-        {busy && streamingText === null && (
-          <div className="mt-3 flex items-center gap-2" role="status">
-            <span className="inline-flex gap-1" aria-hidden="true">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:120ms]" />
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:240ms]" />
-            </span>
-            <span className="font-mono text-xs text-textsub">Thinking…</span>
-          </div>
-        )}
-
-        {uiState === "error" && errorCopy && (
-          <div
-            className="mt-3 rounded-md border border-danger/40 bg-dangerfaint px-3 py-3"
-            role="alert"
-          >
-            <p className="font-body text-sm text-text">{errorCopy}</p>
-            <Button
-              className="mt-2"
-              variant="secondary"
-              size="small"
-              onClick={handleRetry}
-            >
-              Retry
-            </Button>
-          </div>
+        {erroring && (
+          <ErrorBubble onRetry={handleRetry} />
         )}
       </div>
 
       <form
+        id={formId}
         onSubmit={handleSubmit}
         className="shrink-0 border-t border-border p-3"
-        aria-describedby={verifiedCount === 0 ? `${formId}-hint` : undefined}
+        aria-describedby={gateHintCopy ? hintId : undefined}
       >
-        {verifiedCount === 0 && (
-          <p id={`${formId}-hint`} className="mb-2 font-mono text-[10px] text-textmuted">
-            No reviewed facts yet — refusals are expected.
-          </p>
+        {gateHintCopy && (
+          <div
+            id={hintId}
+            className="mb-2 flex flex-col gap-1 rounded-md border border-bordermid bg-panel/60 px-3 py-2"
+            role="note"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-widest text-textmuted">
+              Assistant locked
+            </p>
+            <p className="font-body text-[12px] text-textsub">
+              {gateHintCopy.description}
+            </p>
+            <div>
+              <Button
+                variant="ghost"
+                size="small"
+                type="button"
+                onClick={() => {
+                  if (gateHintCopy.target === "S3") goTo("S3");
+                  else setStudioStep("SS1");
+                }}
+                className="px-1"
+              >
+                {gateHintCopy.cta}
+              </Button>
+            </div>
+          </div>
         )}
-        <label htmlFor={`${formId}-input`} className="sr-only">
-          Message the digital twin
+
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {CHAT_PROMPT_CHIPS.map((chip) => (
+            <button
+              key={chip.category}
+              type="button"
+              onClick={() => handleChipClick(chip.label)}
+              disabled={gated || loading}
+              aria-label={`${CHAT_PROMPT_CHIP_ARIA_PREFIX} ${chip.label}`}
+              className={[
+                "inline-flex items-center rounded-full border px-2.5 py-1",
+                "font-mono text-[10px] uppercase tracking-wide",
+                "transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                gated || loading
+                  ? "border-border bg-panel text-textmuted"
+                  : "border-bordermid bg-card text-textsub hover:border-gold/40 hover:text-text",
+              ].join(" ")}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+
+        <label htmlFor={inputId} className="sr-only">
+          Ask about an approved timeline moment
         </label>
-        <input
-          id={`${formId}-input`}
+        <textarea
+          id={inputId}
+          ref={textareaRef}
           value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            if (uiState === "refusal") setUiState("idle");
-          }}
-          disabled={busy}
-          placeholder="Ask about a verified moment…"
-          className="w-full rounded-md border border-border bg-card px-3 py-2 font-body text-sm text-text placeholder:text-textmuted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/40 disabled:opacity-50"
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={gated || loading}
+          aria-disabled={gated || loading}
+          placeholder={CHAT_PLACEHOLDER}
+          rows={2}
+          className={[
+            "min-h-touch w-full resize-none rounded-md border bg-card px-3 py-2",
+            "font-body text-sm text-text placeholder:text-textmuted",
+            "focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/40",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            gated ? "border-border" : "border-bordermid",
+          ].join(" ")}
           autoComplete="off"
+          spellCheck
         />
-        <div className="mt-2 flex gap-2">
+
+        <div className="mt-2 flex items-center gap-2">
           <Button
             type="submit"
             variant="primary"
             size="small"
             className="flex-1"
-            disabled={busy || !input.trim()}
+            disabled={sendDisabled}
+            aria-label={CHAT_SEND_ARIA_LABEL}
           >
-            Send
+            {CHAT_SEND_GLYPH}
           </Button>
-          {busy && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="small"
-              onClick={handleStop}
-            >
-              Stop
-            </Button>
-          )}
         </div>
       </form>
     </section>
   );
 }
 
-function TwinReplyBubble({
-  text,
-  kind,
-  inProgress = false,
+function UserBubble({ text }: { text: string }) {
+  return (
+    <div className="rounded-md border border-bordermid bg-card px-3 py-2">
+      <p className="font-mono text-[10px] uppercase text-textmuted">You</p>
+      <p className="mt-1 whitespace-pre-wrap font-body text-sm text-text">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function AssistantBubble({
+  reply,
+  onSourceClick,
 }: {
-  text: string;
-  kind: TwinReply["kind"];
-  inProgress?: boolean;
+  reply: ScopedChatReply;
+  onSourceClick: () => void;
 }) {
-  const isRefusal = kind === "refusal";
+  const sourceLabel = reply.sourceEventYear
+    ? `${reply.sourceEventTitle} · ${reply.sourceEventYear}`
+    : reply.sourceEventTitle;
 
   return (
     <div
       className={[
         "rounded-md border px-3 py-2",
-        isRefusal
-          ? "border-gold/50 bg-goldfaint"
+        reply.insufficient
+          ? "border-gold/40 bg-goldfaint"
           : "border-blue/30 bg-bluefaint",
       ].join(" ")}
     >
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-mono text-[10px] uppercase text-textmuted">Twin</p>
-        <Badge variant={isRefusal ? "gold" : "blue"} aria-hidden={false}>
-          {AI_GENERATED_LABEL}
-        </Badge>
-        {isRefusal && (
-          <span className="font-mono text-[10px] text-gold">
-            Grounded refusal
-          </span>
-        )}
-        {inProgress && (
-          <span className="font-mono text-[10px] text-textsub">Typing…</span>
-        )}
+        <Badge variant="muted">{CHAT_DEMO_BADGE_LABEL}</Badge>
+        <Badge variant="blue">{AI_GENERATED_LABEL}</Badge>
       </div>
-      <p className="mt-2 font-body text-sm text-text">{text}</p>
-      {isRefusal && (
-        <p className="mt-2 font-body text-xs text-textsub">
-          Intentional decline — not an error. Only verified records can be cited.
-        </p>
-      )}
+      <p className="mt-2 font-body text-[11px] leading-snug text-textmuted">
+        {CHAT_DEMO_DISCLAIMER}
+      </p>
+      <p className="mt-2 whitespace-pre-wrap font-body text-sm text-text">
+        {reply.body}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+        <span className="font-mono text-[10px] uppercase tracking-wide text-textmuted">
+          {CHAT_SOURCE_PREFIX}
+        </span>
+        <button
+          type="button"
+          onClick={onSourceClick}
+          aria-label={`${CHAT_SOURCE_ARIA_PREFIX} ${sourceLabel}`}
+          className={[
+            "rounded font-body text-[11px] text-lightblue underline-offset-2 hover:underline",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",
+          ].join(" ")}
+        >
+          {sourceLabel}
+        </button>
+      </div>
     </div>
   );
+}
+
+function LoadingBubble() {
+  return (
+    <div
+      className="mt-3 flex items-center gap-2 rounded-md border border-bordermid bg-card/60 px-3 py-2"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <span className="inline-flex gap-1" aria-hidden="true">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:120ms]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:240ms]" />
+      </span>
+      <span className="font-mono text-xs text-textsub">
+        {CHAT_LOADING_TITLE}
+      </span>
+    </div>
+  );
+}
+
+function ErrorBubble({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      className="mt-3 rounded-md border border-danger/40 bg-dangerfaint px-3 py-3"
+      role="alert"
+    >
+      <p className="font-mono text-[10px] uppercase tracking-widest text-danger">
+        {CHAT_ERROR_TITLE}
+      </p>
+      <p className="mt-1 font-body text-sm text-text">
+        {CHAT_ERROR_DESCRIPTION}
+      </p>
+      <Button
+        className="mt-2"
+        variant="secondary"
+        size="small"
+        onClick={onRetry}
+      >
+        {CHAT_ERROR_RETRY_LABEL}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Pure projection of `ChatGateStatus` into the producer-facing hint copy +
+ * CTA target. Returns `null` when the gate is `ready` (no hint needed).
+ */
+function gateHint(
+  gate: ChatGateStatus,
+): { description: string; cta: string; target: "S3" | "SS1" } | null {
+  switch (gate.status) {
+    case "noApprovedEvents":
+      return {
+        description: CHAT_GATE_NO_APPROVED_DESCRIPTION,
+        cta: CHAT_GATE_NO_APPROVED_CTA,
+        target: "S3",
+      };
+    case "noEventSelected":
+      return {
+        description: CHAT_GATE_NO_SELECTED_DESCRIPTION,
+        cta: CHAT_GATE_NO_SELECTED_CTA,
+        target: "SS1",
+      };
+    case "eventNotApproved":
+      return {
+        description: CHAT_GATE_NO_SELECTED_DESCRIPTION,
+        cta: CHAT_GATE_NO_SELECTED_CTA,
+        target: "SS1",
+      };
+    case "ready":
+      return null;
+  }
 }

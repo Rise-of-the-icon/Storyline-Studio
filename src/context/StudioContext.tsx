@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { DigitalTwinProfile } from "../types/twin";
 import type { ResolverOutput } from "../types/resolver";
+import { getDemoSubjectForTwin } from "../data/demoSubjects";
 import {
   DEFAULT_SCENE,
   inferStudioDomain,
@@ -32,10 +33,18 @@ export function StudioProvider({
   children: ReactNode;
 }) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [scene, setScene] = useState<StudioSceneSettings>(() => ({
-    ...DEFAULT_SCENE,
-    domain: inferStudioDomain(draft),
-  }));
+  const [scene, setScene] = useState<StudioSceneSettings>(() => {
+    const demo = getDemoSubjectForTwin(draft);
+    if (demo) {
+      return {
+        domain: inferStudioDomain(draft),
+        audience: demo.voiceProfile.defaultAudience,
+        mode: demo.voiceProfile.defaultMode,
+        narrativeGoalId: demo.voiceProfile.defaultNarrativeGoal,
+      };
+    }
+    return { ...DEFAULT_SCENE, domain: inferStudioDomain(draft) };
+  });
 
   const resolverOutput = useMemo(
     () => runResolver(draft, selectedEventId, scene),

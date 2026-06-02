@@ -1,5 +1,6 @@
 import { Badge } from "../components/Badge";
 import { Tooltip } from "../components/Tooltip";
+import { isDemoTwin } from "../data/demoSubjects";
 import { breakdownSourceConfidence } from "../lib/confidence";
 import { allGuardrailsResolved } from "../lib/guardrails";
 import type { DigitalTwinProfile } from "../types/twin";
@@ -25,9 +26,9 @@ export function TwinContextPanel({ draft }: TwinContextPanelProps) {
   const confidence = breakdownSourceConfidence(draft.timeline);
 
   return (
-    <aside className="flex h-full min-h-0 flex-col border-b border-border bg-panel lg:border-b-0 lg:border-r">
+    <aside className="flex h-full min-h-0 flex-col bg-panel lg:border-r lg:border-border">
       <div className="shrink-0 p-4">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-textmuted">
+      <p className="hidden font-mono text-[10px] uppercase tracking-widest text-textmuted lg:block">
         Twin context
       </p>
 
@@ -35,10 +36,10 @@ export function TwinContextPanel({ draft }: TwinContextPanelProps) {
         <img
           src={wiki.imageUrl}
           alt=""
-          className="mt-4 h-16 w-16 rounded-lg object-cover"
+          className="h-16 w-16 rounded-lg object-cover lg:mt-4"
         />
       ) : (
-        <div className="mt-4 flex h-16 w-16 items-center justify-center rounded-lg bg-card font-display text-xl text-textmuted">
+        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-card font-display text-xl text-textmuted lg:mt-4">
           {wiki.title.slice(0, 1)}
         </div>
       )}
@@ -46,6 +47,11 @@ export function TwinContextPanel({ draft }: TwinContextPanelProps) {
       <h2 className="mt-3 font-body text-base font-medium leading-tight text-text">
         {draft.coreIdentity.name}
       </h2>
+      {isDemoTwin(draft) && (
+        <p className="mt-1">
+          <Badge variant="gold">Demo profile</Badge>
+        </p>
+      )}
 
       <dl className="mt-4 space-y-3 font-mono text-[11px]">
         <div>
@@ -66,7 +72,7 @@ export function TwinContextPanel({ draft }: TwinContextPanelProps) {
             >
               <button
                 type="button"
-                className="rounded-md focus:outline-none focus:ring-2 focus:ring-gold"
+                className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
               >
                 <Badge variant="blue">{confidence.label}</Badge>
               </button>

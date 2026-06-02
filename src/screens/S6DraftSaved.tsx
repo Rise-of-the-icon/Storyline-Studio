@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { ErrorState } from "../components/ErrorState";
+import { LoadingState } from "../components/LoadingState";
+import { RetryPanel } from "../components/RetryPanel";
 import { useTwin } from "../context/TwinContext";
 import { ProfileCardSkeleton } from "../components/Skeleton";
 import { canPersistDraft } from "../lib/consent";
+import { getDraftSummary } from "../lib/draftSummary";
+import {
+  SAVE_CONSENT_BLOCKED_DESCRIPTION,
+  SAVE_CONSENT_BLOCKED_TITLE,
+  SAVE_ERROR_DESCRIPTION,
+  SAVE_ERROR_TITLE,
+  SAVE_LOADING_DESCRIPTION,
+  SAVE_LOADING_TITLE,
+} from "../lib/stateCopy";
 import { saveTwin, setDraft as persistDraftId } from "../lib/storage";
 import type { DigitalTwinProfile } from "../types/twin";
 
 type S6Phase = "saving" | "saved" | "error";
 
 const SAVE_DELAY_MS = 800;
-
-function summarizeConfidence(timeline: DigitalTwinProfile["timeline"]): string {
-  if (timeline.length === 0) return "No events";
-  const levels = new Set(timeline.map((e) => e.confidence));
-  if (levels.size === 1) return [...levels][0];
-  if (levels.has("Low")) return "Mixed (includes low confidence)";
-  return "Mixed";
-}
 
 async function commitTwin(
   draft: DigitalTwinProfile,
@@ -26,12 +30,11 @@ async function commitTwin(
     return null;
   }
   await new Promise((r) => setTimeout(r, SAVE_DELAY_MS));
-  const saved: DigitalTwinProfile = {
+  const saved = saveTwin({
     ...draft,
     draftStatus: "saved",
-  };
-  const ok = saveTwin(saved);
-  if (!ok) return null;
+  });
+  if (!saved) return null;
   persistDraftId(saved.twinId);
   return saved;
 }
@@ -77,55 +80,72 @@ export function S6DraftSaved() {
 
   if (phase === "saving") {
     return (
-      <div
-        className="mx-auto max-w-[680px] px-4 py-16"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <p className="font-display text-2xl text-text">Saving draft…</p>
-        <p className="mt-2 font-body text-sm text-textsub">
-          Writing {draft?.coreIdentity.name ?? "twin"} to local storage
-        </p>
-        <div className="mt-8">
-          <ProfileCardSkeleton />
-        </div>
-      </div>
+      <LoadingState
+        eyebrow="S6 · Draft save"
+        title={SAVE_LOADING_TITLE}
+        description={
+          draft?.coreIdentity.name
+            ? `${SAVE_LOADING_DESCRIPTION} (${draft.coreIdentity.name})`
+            : SAVE_LOADING_DESCRIPTION
+        }
+        skeleton={<ProfileCardSkeleton />}
+      />
     );
   }
 
   if (phase === "error") {
-    const consentBlocked = draft && !canPersistDraft(draft);
-    return (
-      <div className="mx-auto max-w-[680px] px-4 py-16 text-center">
-        <p className="font-display text-2xl text-danger">
-          {consentBlocked ? "Consent required" : "Save failed"}
-        </p>
-        <p className="mt-2 font-body text-sm text-textsub">
-          {consentBlocked
-            ? "Acknowledge consent on profile import (S2) before saving a draft."
-            : "Your twin is still in memory. Free storage or retry — nothing was lost from this session."}
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {!consentBlocked && (
-            <Button variant="primary" onClick={() => void runCommit()}>
-              Retry save
-            </Button>
-          )}
-          <Button
-            variant={consentBlocked ? "primary" : "ghost"}
-            onClick={() => goTo(consentBlocked ? "S2" : "S5")}
-          >
-            {consentBlocked ? "Go to profile import" : "Back to guardrails"}
-          </Button>
+    const consentBlocked = draft ? !canPersistDraft(draft) : false;
+    if (consentBlocked) {
+      // Not retryable — the user must go fix consent on S2. Use ErrorState
+      // with a custom action instead of RetryPanel.
+      return (
+        <div className="mx-auto max-w-[680px] px-4 py-16">
+          <ErrorState
+            eyebrow="S6 · Save blocked"
+            title={SAVE_CONSENT_BLOCKED_TITLE}
+            description={SAVE_CONSENT_BLOCKED_DESCRIPTION}
+            action={
+              <Button variant="primary" onClick={() => goTo("S2")}>
+                Go to profile import
+              </Button>
+            }
+          />
         </div>
+      );
+    }
+    return (
+      <div className="mx-auto max-w-[680px] px-4 py-16">
+        <RetryPanel
+          eyebrow="S6 · Save error"
+          title={SAVE_ERROR_TITLE}
+          description={
+            <>
+              {SAVE_ERROR_DESCRIPTION}{" "}
+              <span className="block pt-2 text-textmuted">
+                Your twin is still in memory — nothing was lost from this
+                session.
+              </span>
+            </>
+          }
+          retryLabel="Retry save"
+          onRetry={() => void runCommit()}
+          secondaryAction={{
+            label: "Back to guardrails",
+            onClick: () => goTo("S5"),
+          }}
+        />
       </div>
     );
   }
 
   const wiki = draft!.wikipedia;
-  const approvedCount = draft!.timeline.filter(
-    (e) => e.approvalStatus === "Reviewed",
-  ).length;
+  const summary = getDraftSummary(draft!);
+  const guardrailNote =
+    summary.guardrail.total === 0
+      ? "All clear — no guardrail flags."
+      : summary.guardrail.highBlocking > 0
+        ? `${summary.guardrail.highBlocking} high blocking · ${summary.guardrail.deferred} deferred`
+        : `${summary.guardrail.cleared} cleared · ${summary.guardrail.deferred} deferred · ${summary.guardrail.unresolved} unresolved`;
 
   return (
     <div className="mx-auto max-w-[680px] px-4 py-12">
@@ -144,7 +164,10 @@ export function S6DraftSaved() {
         </p>
       </div>
 
-      <article className="mt-10 flex gap-4 rounded-lg border border-border bg-card p-5">
+      <article
+        className="mt-10 flex gap-4 rounded-lg border border-border bg-card p-5"
+        aria-label="Saved draft summary"
+      >
         {wiki.imageUrl ? (
           <img
             src={wiki.imageUrl}
@@ -152,33 +175,78 @@ export function S6DraftSaved() {
             className="h-20 w-20 shrink-0 rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-panel font-display text-2xl text-textmuted">
+          <div
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-panel font-display text-2xl text-textmuted"
+            aria-hidden="true"
+          >
             {wiki.title.slice(0, 1)}
           </div>
         )}
-        <div className="min-w-0 text-left">
-          <h2 className="font-body text-xl font-medium text-text">
-            {draft!.coreIdentity.name}
-          </h2>
-          <dl className="mt-3 space-y-1 font-mono text-xs text-textsub">
+        <div className="min-w-0 flex-1 text-left">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-body text-xl font-medium text-text">
+              {summary.subjectName}
+            </h2>
+            {summary.isDemo && <Badge variant="gold">Demo profile</Badge>}
+            {summary.guardrail.highBlocking > 0 && (
+              <Badge variant="danger">
+                {summary.guardrail.highBlocking} high blocking
+              </Badge>
+            )}
+          </div>
+          <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1 font-mono text-xs text-textsub sm:grid-cols-2">
             <div className="flex gap-2">
               <dt className="text-textmuted">Timeline</dt>
-              <dd>{draft!.timeline.length} events</dd>
+              <dd>
+                {summary.eventCount} event
+                {summary.eventCount === 1 ? "" : "s"}
+              </dd>
             </div>
             <div className="flex gap-2">
               <dt className="text-textmuted">Approved</dt>
-              <dd>{approvedCount}</dd>
+              <dd>{summary.approvedEventCount}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-textmuted">Deferred</dt>
+              <dd>{summary.deferredEventCount}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="text-textmuted">Custom</dt>
-              <dd>{draft!.customMoments.length} moments</dd>
+              <dd>
+                {summary.customMomentCount} moment
+                {summary.customMomentCount === 1 ? "" : "s"}
+              </dd>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
               <dt className="text-textmuted">Confidence</dt>
               <dd>
-                <Badge variant="blue">
-                  {summarizeConfidence(draft!.timeline)}
-                </Badge>
+                <Badge variant="blue">{summary.confidenceLabel}</Badge>
+              </dd>
+            </div>
+            <div className="flex gap-2 sm:col-span-2">
+              <dt className="text-textmuted">Guardrails</dt>
+              <dd>{guardrailNote}</dd>
+            </div>
+            {summary.savedVoiceContextCount > 0 && (
+              <div className="flex gap-2 sm:col-span-2">
+                <dt className="text-textmuted">Voice contexts</dt>
+                <dd>
+                  {summary.savedVoiceContextCount} saved
+                </dd>
+              </div>
+            )}
+            {summary.consentAcknowledged && (
+              <div className="flex gap-2 sm:col-span-2">
+                <dt className="text-textmuted">Consent</dt>
+                <dd>Acknowledged</dd>
+              </div>
+            )}
+            <div className="flex gap-2 sm:col-span-2">
+              <dt className="text-textmuted">Last saved</dt>
+              <dd>
+                <time dateTime={summary.lastSavedAtISO}>
+                  {summary.lastSavedLabel}
+                </time>
               </dd>
             </div>
           </dl>

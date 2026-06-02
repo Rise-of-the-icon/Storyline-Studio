@@ -9,9 +9,16 @@ export interface StudioBreadcrumbProps {
 
 export function StudioBreadcrumb({ current, onSelect }: StudioBreadcrumbProps) {
   return (
-    <nav aria-label="Studio steps" className="flex flex-wrap items-center gap-1">
+    <nav aria-label="Studio sub-steps" className="flex flex-wrap items-center gap-1">
       {STEPS.map((step, index) => {
         const isCurrent = step === current;
+        const label = STUDIO_STEP_LABELS[step];
+        // Screen reader announcement format:
+        //   "Studio sub-step 2 of 4, Scene context, current step"
+        //   "Studio sub-step 3 of 4, Emotional preview"
+        const ariaLabel = isCurrent
+          ? `Studio sub-step ${index + 1} of ${STEPS.length}, ${label}, current step`
+          : `Studio sub-step ${index + 1} of ${STEPS.length}, ${label}`;
         return (
           <span key={step} className="flex items-center gap-1">
             {index > 0 && (
@@ -23,15 +30,16 @@ export function StudioBreadcrumb({ current, onSelect }: StudioBreadcrumbProps) {
               type="button"
               onClick={() => onSelect(step)}
               aria-current={isCurrent ? "step" : undefined}
+              aria-label={ariaLabel}
               className={[
-                "min-h-[36px] rounded-md px-2 font-mono text-xs uppercase tracking-wide",
-                "focus:outline-none focus:ring-2 focus:ring-gold",
+                "min-h-touch rounded-md px-2 font-mono text-xs uppercase tracking-wide sm:min-h-[36px]",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",
                 isCurrent
                   ? "text-gold"
                   : "text-textsub hover:text-text",
               ].join(" ")}
             >
-              {STUDIO_STEP_LABELS[step]}
+              {label}
             </button>
           </span>
         );

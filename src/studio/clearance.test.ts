@@ -72,9 +72,20 @@ describe("evaluatePerformanceClearance", () => {
     const result = evaluatePerformanceClearance(
       baseDraft(),
       null,
-      resolverForEvent("evt-1"),
+      null,
     );
     expect(result.status).toBe("block");
+    expect(result.details).toEqual([
+      "Choose one approved timeline event. The resolver needs an event before it can create a performance context.",
+    ]);
+  });
+
+  it("explains how to recover when the resolver has no output", () => {
+    const result = evaluatePerformanceClearance(baseDraft(), "evt-1", null);
+    expect(result.status).toBe("block");
+    expect(result.details).toEqual([
+      "The resolver could not create a performance context from the selected event. Return to Scene Context and review the settings.",
+    ]);
   });
 
   it("warns when resolver has warnings", () => {
@@ -101,5 +112,8 @@ describe("evaluatePerformanceClearance", () => {
       resolverForEvent("evt-1"),
     );
     expect(result.status).toBe("block");
+    expect(result.details).toEqual([
+      "1 producer guardrail flag still needs a decision. Review each flag in Step 5 before locking this context.",
+    ]);
   });
 });

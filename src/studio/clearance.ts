@@ -21,11 +21,13 @@ export function evaluatePerformanceClearance(
     : undefined;
 
   if (!selectedEventId || !event) {
-    details.push("Select an anchoring timeline event.");
-  }
-
-  if (!resolverOutput) {
-    details.push("Resolver output is not available for the current context.");
+    details.push(
+      "Choose one approved timeline event. The resolver needs an event before it can create a performance context.",
+    );
+  } else if (!resolverOutput) {
+    details.push(
+      "The resolver could not create a performance context from the selected event. Return to Scene Context and review the settings.",
+    );
   }
 
   const pendingGuardrails = draft.guardrailReviews.filter(
@@ -33,15 +35,18 @@ export function evaluatePerformanceClearance(
   );
   if (pendingGuardrails.length > 0) {
     details.push(
-      `${pendingGuardrails.length} producer guardrail flag(s) still need review (complete in onboarding).`,
+      `${pendingGuardrails.length} producer guardrail flag${pendingGuardrails.length === 1 ? "" : "s"} still ${pendingGuardrails.length === 1 ? "needs" : "need"} a decision. Review each flag in Step 5 before locking this context.`,
     );
   }
 
   if (
+    pendingGuardrails.length === 0 &&
     draft.guardrailReviews.length > 0 &&
     !allGuardrailsResolved(draft.guardrailReviews)
   ) {
-    details.push("Not all producer guardrail flags are editorially resolved.");
+    details.push(
+      "Some producer guardrail flags still need a decision in Step 5 before locking this context.",
+    );
   }
 
   if (details.length > 0) {
