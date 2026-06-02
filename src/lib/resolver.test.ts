@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Confidence, Sensitivity } from "../types/twin";
-import type { Domain, ResolverInput, ResolverOutput } from "../types/resolver";
+import type { Confidence, Sensitivity } from "@/types/twin";
+import type { Domain, ResolverInput, ResolverOutput } from "@/types/resolver";
 import { RESOLVER_CONFIG, resolve } from "./resolver";
 
 const MODES: ResolverInput["mode"][] = ["Narrator", "Q&A", "Documentary"];

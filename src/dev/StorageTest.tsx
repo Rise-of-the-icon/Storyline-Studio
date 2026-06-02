@@ -7,9 +7,9 @@ import {
   listTwins,
   saveTwin,
   setDraft,
-} from "../lib/storage";
-import { sanitizeFreeText, wrapUntrustedUserData } from "../lib/sanitize";
-import { SCHEMA_VERSION } from "../types/twin";
+} from "@/lib/storage";
+import { sanitizeFreeText, wrapUntrustedUserData } from "@/lib/sanitize";
+import { SCHEMA_VERSION } from "@/types/twin";
 import { createStorageTestTwin } from "./mockTwin";
 
 type LogLine = { id: number; text: string };

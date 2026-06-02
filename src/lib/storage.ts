@@ -4,7 +4,11 @@ import {
   type CustomMoment,
   type DigitalTwinProfile,
   type TimelineEvent,
-} from "../types/twin";
+} from "@/types/twin";
+import {
+  deleteTwinFromRemote,
+  mirrorTwinToRemote,
+} from "@/services/twinRemoteStorage";
 
 const KEY_PREFIX = "ricon";
 const INDEX_KEY = `${KEY_PREFIX}:index`;
@@ -167,6 +171,7 @@ export function saveTwin(twin: DigitalTwinProfile): DigitalTwinProfile | null {
       return null;
     }
   }
+  mirrorTwinToRemote(normalized);
   return normalized;
 }
 
@@ -221,6 +226,7 @@ export function deleteActiveDraft(): boolean {
   // Drop the id from the index so `listTwins()` stays accurate.
   const index = readIndex().filter((id) => id !== draftId);
   writeIndex(index);
+  deleteTwinFromRemote(draftId);
   return true;
 }
 

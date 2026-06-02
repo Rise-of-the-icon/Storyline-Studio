@@ -48,24 +48,31 @@ fontFamily: {
 
 ## Spacing & layout
 
-- Content frame max-width: **680px** for wizard screens; the Voice Studio is a full-width **three-panel grid** (`220px · 1fr · 260px`).
-- Border radius: 6px (controls), 8px (cards), 10–12px (containers), 20px (pills).
-- Borders are hairline: `0.5px solid` the border token. Accent borders use a `2px` left border.
+- Content frame max-width: **680px** for wizard screens; the Voice Studio is a full-width **three-panel grid** (`220px · 1fr · 280px`).
+- **Border radius (only these four):** `rounded-md` (controls), `rounded-lg` (cards), `rounded-xl` (modals/sheets), `rounded-full` (pills/chips). Avoid bare `rounded`.
+- Borders are hairline on `border` / `bordermid`. **Accent borders:** `/40` resting, `/60` strong (e.g. `border-gold/40`, `border-gold/60`).
 - Generous vertical rhythm. Don't crowd.
 
-## Component primitives (build these first, in `src/components/`)
+## Typography roles
+
+- **Display** (`font-display`) — screen titles only.
+- **Body** (`font-body`) — paragraphs and control labels.
+- **`.label-mono`** — uppercase section eyebrows and form labels (12px, `text-label`).
+- **`.meta-mono`** — metadata, counters, footnotes (11px, no uppercase).
+- Reserve `text-[10px]` for bounded chips only (`Badge`, wizard stepper swatch).
+
+## Component primitives (`src/shared/ui/`)
 
 Each is a small typed component with all interaction states (default/hover/focus/active/disabled):
 
-- `Button` — variants: primary (gold fill), secondary (outline), ghost, danger, success. Sizes: default, small.
-- `Badge` — pill, color variants: gold, blue, ok, danger, muted.
-- `Input` / `Textarea` — dark fields with hairline border, visible focus ring, placeholder in `textmuted`.
-- `SegControl` — segmented single-select button group.
-- `ProgressBar` — the 7-step wizard indicator (current = gold, done = checkmark).
-- `ParamBar` — labelled 0–100 horizontal bar (intensity/warmth/pacing/confidence).
-- `Modal` — centered overlay, dark scrim, close affordance, ESC + scrim-click to dismiss.
-- `Tooltip` — hover popover for the source-confidence breakdown.
-- `Mono` / `Label` — the small mono caption used everywhere.
+- `Button` — primary, secondary, ghost, danger. Sizes: default, small.
+- `Card` — composition API (`Card.Header`, `Card.Title`, `Card.Meta`, `Card.Body`, `Card.Footer`) with `state` for review/guardrail tints and `selectable` for option cards.
+- `Callout` — `tone="info" | "warning" | "neutral"` inline advisory blocks.
+- `Checkbox`, `SearchInput`, `Disclosure` — form and progressive-disclosure shells.
+- `Badge` + semantic wrappers (`SourceBadge`, `ConfidenceBadge`, …).
+- `Input` / `Textarea` — dark fields, visible focus ring.
+- `SegControl`, `ParamBar`, `Modal`, `Tooltip`, `EmptyState`, `LoadingState`, `ErrorState`, `RetryPanel`.
+- `WizardActionBar` (`src/app/navigation/`) — sticky/fixed wizard + studio footers.
 
 ## Accessibility rules baked into primitives
 
@@ -77,7 +84,9 @@ Each is a small typed component with all interaction states (default/hover/focus
 
 ## Motion
 
-Two "wow moments" deserve real animation; everything else is subtle:
+Motion supports orientation and storytelling; it should not compete with content:
 1. **Timeline reveal (S3):** events fade/slide in on scroll.
 2. **Resolver reveal (S7):** the resolved feeling and parameter bars animate in when an event is selected.
-Keep transitions ~150–400ms, ease-out. Respect `prefers-reduced-motion`.
+3. **Flow entrances:** landing copy, search results, wizard screens, and Voice Studio sub-steps use short fade/slide entrances.
+4. **Completion feedback:** completed wizard steps and locked voice context use a one-shot soft glow.
+Keep transitions ~150–420ms, ease-out. Cap list staggering to the first six items. Every entry animation and completion glow must be gated by `prefers-reduced-motion`.

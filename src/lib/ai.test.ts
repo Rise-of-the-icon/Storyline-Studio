@@ -4,7 +4,7 @@ import {
   askTwin,
   collectVerifiedFacts,
 } from "./ai";
-import { SCHEMA_VERSION, type DigitalTwinProfile, type TimelineEvent } from "../types/twin";
+import { SCHEMA_VERSION, type DigitalTwinProfile, type TimelineEvent } from "@/types/twin";
 
 function timelineEvent(
   overrides: Partial<TimelineEvent> & Pick<TimelineEvent, "id" | "title" | "description" | "year">,

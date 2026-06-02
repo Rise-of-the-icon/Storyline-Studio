@@ -1,4 +1,4 @@
-import type { DigitalTwinProfile } from "../types/twin";
+import type { DigitalTwinProfile } from "@/types/twin";
 
 /**
  * Gate 4 — consent + ethical-use copy. Centralized so a single edit updates

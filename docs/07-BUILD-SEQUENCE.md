@@ -38,7 +38,7 @@ read back, and that a schemaVersion mismatch is handled gracefully.
 **Prompt 0.3 — Component primitives**
 ```
 Read docs/02-DESIGN-SYSTEM.md.
-Build every primitive in src/components/ (Button, Badge, Input, Textarea,
+Build every primitive in src/shared/ui/ (Button, Badge, Input, Textarea,
 SegControl, ProgressBar, ParamBar, Modal, Tooltip, Mono/Label) with all
 interaction states and the accessibility rules in the doc (visible focus,
 real buttons, 44px targets, no color-only state).
@@ -91,7 +91,7 @@ be markable as requiring an editorial note.
 ```
 Read docs/01-ARCHITECTURE.md and docs/04-SCREENS.md (navigation map).
 Implement App.tsx with the screen-state switch (S1–S7) and the back/forward +
-S5→S4 rejection-loop transitions. Implement src/context/TwinContext.tsx holding the
+S5→S4 rejection-loop transitions. Implement src/app/providers/TwinContext.tsx holding the
 in-progress draft and wizard progress, persisting through storage.ts.
 Build the persistent TopBar and the wizard header (ProgressBar + Twin Context
 summary) as shared components. Stub each screen as a labelled placeholder.
@@ -102,10 +102,10 @@ summary) as shared components. Stub each screen as a labelled placeholder.
 ```
 Read docs/04-SCREENS.md (S1) and docs/05-STATES.md (S1) and docs/03-DATA-MODEL.md
 (mockData requirement).
-Build the Search screen with all S1 states. Implement src/lib/wikipedia.ts and query
+Build the Search screen with all S1 states. Implement src/features/search/wikipedia.ts and query
 the REAL Wikipedia REST API live, client-side (public, read-only, no key) for both
 search and summary/import. Debounce the query. On API failure or rate-limit, fall back
-to local demo subjects from src/lib/mockData.ts (seed Michael Jordan fully per the
+to local demo subjects from src/data/demoSubjects.ts (seed Michael Jordan fully per the
 data-model doc) and show a subtle "showing demo subjects" note. Selecting a result
 stores the profile draft in TwinContext and goes to S2.
 ✅ Verify: typing "michael" returns live Wikipedia results; disabling network falls

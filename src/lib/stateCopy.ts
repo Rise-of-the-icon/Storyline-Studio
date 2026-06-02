@@ -12,7 +12,7 @@
  *
  * Loading-title convention: titles end with a Unicode `…` so the editorial
  * voice carries through (it reads as a sentence, not a label). Renderers
- * (see `src/components/LoadingState.tsx`) detect the trailing ellipsis and
+ * (see `src/shared/ui/LoadingState.tsx`) detect the trailing ellipsis and
  * skip the decorative gold-animated `…` when present so we never get a
  * double-ellipsis "Searching public sources… …".
  */

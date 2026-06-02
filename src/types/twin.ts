@@ -199,7 +199,7 @@ export interface CustomMoment {
    * requirement).
    */
   source?: SourceReference;
-  /** Optional producer-supplied media references. URLs only: no binary upload. */
+  /** Optional producer-supplied uploads and YouTube references. */
   media?: CustomMomentMedia[];
 }
 

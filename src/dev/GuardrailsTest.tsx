@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { CustomMoment } from "../types/twin";
-import { evaluateGuardrails } from "../lib/guardrails";
+import type { CustomMoment } from "@/types/twin";
+import { evaluateGuardrails } from "@/lib/guardrails";
 
 const DEMO_MOMENT: CustomMoment = {
   id: "cm-demo-private",

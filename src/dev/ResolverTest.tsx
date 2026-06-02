@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { resolve } from "../lib/resolver";
-import type { ResolverOutput } from "../types/resolver";
+import { resolve } from "@/lib/resolver";
+import type { ResolverOutput } from "@/types/resolver";
 
 const SPORTS_INPUT = {
   domain: "sports" as const,

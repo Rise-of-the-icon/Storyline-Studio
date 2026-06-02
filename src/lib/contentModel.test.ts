@@ -25,7 +25,7 @@ import type {
   CustomMoment,
   SourceObject,
   TimelineEvent,
-} from "../types/twin";
+} from "@/types/twin";
 
 function event(overrides: Partial<TimelineEvent> = {}): TimelineEvent {
   return {

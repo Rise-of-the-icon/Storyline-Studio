@@ -37,6 +37,12 @@ export default {
         okfaint: "#071a10",
         danger: "#c0392b",
         dangerfaint: "#1a0808",
+        // Advisory / needs-attention (replaces raw amber-* in Badge).
+        warning: "#f59e0b",
+        warningdim: "#78350f",
+        warningfaint: "#1c1408",
+        // Semantic info role — same hue as lightblue, distinct from `blue` surfaces.
+        info: "#7db3e8",
         // ---- Text scale ----
         // All three pass WCAG 2.1 AA (4.5:1) against every dark surface in
         // the palette (bg / surface / card / panel / hover / goldfaint /
@@ -54,6 +60,10 @@ export default {
         textsub: "#8888aa",
         textmuted: "#888fad",
         textfaint: "#5a5a78",
+      },
+      fontSize: {
+        label: ["12px", { letterSpacing: "0.12em", lineHeight: "1.2" }],
+        meta: ["11px", { letterSpacing: "0.04em", lineHeight: "1.4" }],
       },
       fontFamily: {
         display: ["'Bebas Neue'", "sans-serif"],

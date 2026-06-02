@@ -10,7 +10,7 @@ import {
   setDraft,
 } from "./storage";
 import { makeWikipediaSource } from "./contentModel";
-import { SCHEMA_VERSION, type DigitalTwinProfile } from "../types/twin";
+import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
 
 /**
  * Storage layer regression suite — node + the polyfilled `localStorage`

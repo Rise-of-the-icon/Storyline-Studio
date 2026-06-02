@@ -2,7 +2,7 @@
  * Curated demo profiles for the RICON Studio wizard.
  *
  * - Used as Wikipedia-search fallbacks when the live API is unreachable
- *   (see `src/lib/wikipedia.ts` → `searchWikipedia`).
+ *   (see `src/features/search/wikipedia.ts` → `searchWikipedia`).
  * - Used directly via the explicit `useDemoSubject(id)` context action
  *   from S1's "Try a demo subject" pills.
  *
@@ -15,16 +15,16 @@
  * `src/dev/mockTwin.ts` and is dev-only.
  */
 
-import { makeProducerSource } from "../lib/contentModel";
-import { evaluateGuardrails } from "../lib/guardrails";
-import type { WikipediaSearchHit } from "../lib/wikipedia";
+import { makeProducerSource } from "@/lib/contentModel";
+import { evaluateGuardrails } from "@/lib/guardrails";
+import type { WikipediaSearchHit } from "@/features/search/wikipedia";
 import {
   SCHEMA_VERSION,
   type CustomMoment,
   type DigitalTwinProfile,
   type TimelineEvent,
   type WikipediaProfile,
-} from "../types/twin";
+} from "@/types/twin";
 
 export type DemoSubjectCategory = "Sports" | "Music";
 

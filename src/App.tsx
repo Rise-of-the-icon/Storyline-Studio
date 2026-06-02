@@ -1,20 +1,16 @@
 import type { ComponentType } from "react";
-import { AppHeader } from "./components/AppHeader";
-import { StepTransition } from "./components/StepTransition";
-import { WizardHeader } from "./components/WizardHeader";
-import { TwinProvider, useTwin } from "./context/TwinContext";
+import { AppHeader, WizardHeader } from "@/app/navigation";
+import { TwinProvider, useTwin } from "@/app/providers";
+import { S4CustomMoments } from "@/features/custom-moments";
+import { S5GuardrailReview } from "@/features/guardrails";
+import { S6DraftSaved } from "@/features/saved-draft";
+import { S1Search, S2ProfileImport } from "@/features/search";
+import { VoiceStudio } from "@/features/studio";
+import { S3TimelineReview } from "@/features/timeline";
+import { StepTransition } from "@/shared/ui";
 import { GuardrailsTest } from "./dev/GuardrailsTest";
 import { ResolverTest } from "./dev/ResolverTest";
 import { StorageTest } from "./dev/StorageTest";
-import {
-  S1Search,
-  S2ProfileImport,
-  S3TimelineReview,
-  S4CustomMoments,
-  S5GuardrailReview,
-  S6DraftSaved,
-} from "./screens";
-import { VoiceStudio } from "./studio/VoiceStudio";
 import { SCREEN_META, type ScreenId } from "./types/navigation";
 
 const SCREEN_COMPONENTS: Record<ScreenId, ComponentType> = {

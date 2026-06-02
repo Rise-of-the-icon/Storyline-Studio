@@ -7,7 +7,7 @@ import {
   CONSENT_WHY_THIS_MATTERS,
   withConsent,
 } from "./consent";
-import { SCHEMA_VERSION, type DigitalTwinProfile } from "../types/twin";
+import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
 
 function fixtureTwin(overrides: Partial<DigitalTwinProfile> = {}): DigitalTwinProfile {
   return {

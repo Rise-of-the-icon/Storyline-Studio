@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type DigitalTwinProfile } from "../types/twin";
+import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
 
 /**
  * Storage-harness fixture only. NEVER reach for this from a real user flow —

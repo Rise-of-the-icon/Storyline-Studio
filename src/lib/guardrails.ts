@@ -11,7 +11,7 @@ import type {
   SourceReference,
   TimelineEvent,
   Visibility,
-} from "../types/twin";
+} from "@/types/twin";
 
 /** Gate 4 — shown in S5 / studio guardrail areas. */
 export const GUARDRAIL_DISCLAIMER =

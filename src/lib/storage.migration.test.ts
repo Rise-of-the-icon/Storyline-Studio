@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrateV1ToV2 } from "./storage";
-import { SCHEMA_VERSION, type DigitalTwinProfile } from "../types/twin";
+import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
 
 /**
  * V1 → V2 migration regression suite. The V1 wire format predates the

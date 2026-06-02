@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { SCHEMA_VERSION, type DigitalTwinProfile } from "../types/twin";
+import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
 import { canPersistDraft } from "./consent";
 import { GUARDRAIL_DISCLAIMER } from "./guardrails";
 

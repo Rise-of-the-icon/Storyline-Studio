@@ -3,7 +3,7 @@ import type {
   CustomMoment,
   GuardrailReview,
   TimelineEvent,
-} from "../types/twin";
+} from "@/types/twin";
 import { makeProducerSource, makeWikipediaSource } from "./contentModel";
 import {
   allGuardrailsResolved,

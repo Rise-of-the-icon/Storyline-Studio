@@ -139,9 +139,16 @@ Rules:
 - Wrap all `localStorage` calls in try/catch; storage can throw (quota, private mode).
 - IDs: generate with `crypto.randomUUID()`.
 
+## Future remote persistence
+
+`localStorage` remains the active POC cache. `src/services/twinRemoteStorage.ts`
+defines an optional async server-storage contract and mirrors successful local
+saves/deletions only when configured. The browser must call an authenticated API;
+it must never connect directly to MongoDB. See `09-MONGODB-READINESS.md`.
+
 ## Demo data (Five Challenge B1 — never live-fetch in a demo)
 
-Seed a local `src/lib/mockData.ts` with **fully-built demo twins** (start with Michael Jordan). Include:
+Seed a local `src/data/demoSubjects.ts` with **fully-built demo twins** (start with Michael Jordan). Include:
 - 10 timeline events grouped across decades, with realistic confidence levels (a couple "Medium").
 - At least one **intentional guardrail flag** so the review flow demonstrates itself on cue.
 - At least one **low-confidence / edge-case** record so the State Catalog states are demonstrable.

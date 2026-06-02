@@ -1,42 +1,80 @@
-# RICON Cursor Build Kit — Start Here
+# RICON Storyline Studio
 
-This kit gives Cursor everything it needs to build the Voice Research Studio properly, with the AI Five Challenge safety findings wired in as hard gates.
+RICON Storyline Studio is a client-only React proof of concept for researching a public figure, curating an approved timeline, adding producer context, resolving guardrails, and preparing an emotionally directed Voice Studio context.
 
-## Setup (do this once)
-1. Create your repo. Copy the entire `docs/` folder and the `.cursor/` folder into the repo root.
-2. Open the repo in Cursor. The `.cursor/rules/project.mdc` rule applies automatically on every request.
-3. Open `docs/07-BUILD-SEQUENCE.md` — that's your worklist.
+The current build is intentionally local-first: profile drafts persist in browser `localStorage`, Wikipedia search uses the public REST API with seeded demo fallbacks, and the AI chat remains a clearly labelled grounded mock behind the stable `src/lib/ai.ts` seam.
 
-## How to build
-- Paste the prompts from `07-BUILD-SEQUENCE.md` **one at a time, in order.**
-- After each, run the "✅ Verify" check before continuing.
-- If Cursor proposes something that breaks a gate in `08-AI-SAFETY.md`, it should stop and flag it — if it doesn't, paste: *"Does this violate any gate in docs/08-AI-SAFETY.md? If so, fix it."*
+## Setup
 
-## The docs (read order)
-| File | What it's for |
+```bash
+npm install
+npm run dev
+```
+
+Open the Vite URL printed by the terminal, normally `http://localhost:5173/`.
+
+## Commands
+
+| Command | Purpose |
 |---|---|
-| `00-PROJECT-RULES.md` | Master rules — stack, standards, the four gates, working style |
-| `01-ARCHITECTURE.md` | Folder structure, data flow, the AI request path |
-| `02-DESIGN-SYSTEM.md` | Tokens, fonts, primitives, motion, a11y |
-| `03-DATA-MODEL.md` | Types + localStorage schema + demo data |
-| `04-SCREENS.md` | All 7 screens + 4 studio sub-steps + nav map |
-| `05-STATES.md` | Loading/empty/error/edge states per screen |
-| `06-EMOTIONAL-RESOLVER.md` | The resolver logic spec (the IP) |
-| `07-BUILD-SEQUENCE.md` | The ordered prompt list — **work from this** |
-| `08-AI-SAFETY.md` | The four gates, in implementation detail |
+| `npm run dev` | Start the Vite development server. |
+| `npm test` | Run the Vitest suite once. |
+| `npm run test:watch` | Run Vitest in watch mode. |
+| `npm run build` | Run strict TypeScript validation and create the production Vite bundle. |
+| `npm run preview` | Preview the production bundle locally after a build. |
 
-## The four gates (never violated, even in a POC)
-1. No API keys in client code — **AI is NOT connected in this build; the twin chat is a grounded mock, so there's no key to leak.** The seam is built so real AI (a Netlify Function) drops in later as a one-file change.
-2. Verified-facts-only AI — even the mock refuses ungrounded questions; this proves the trust behavior to investors today.
-3. All user free-text is untrusted — sanitized before any prompt (mock included).
-4. Consent capture (demo-stage placeholder, but a real gate) + "AI-generated" labels — guardrail UI never implies legal clearance.
+There is currently no lint script. Use `npm run build`, `npm test`, and `git diff --check` as the required verification baseline.
 
-## This build's key decisions
-- **Deploy:** Netlify, static SPA.
-- **AI:** not connected — grounded mock behind a single `src/lib/ai.ts` seam.
-- **Domains:** both Sports and Music ship.
-- **Wikipedia:** real live REST API, with local mock data as fallback so demos never dead-end.
-- **Consent:** real blocking gate in the flow, placeholder legal copy in one swappable constant.
+## Project Structure
 
-## Why this order
-The resolver (the differentiating IP) is built and unit-tested **before** any UI depends on it. The data spine (types + storage + sanitize) is built before screens, so the schema lives in one place. The four gates are enforced from the first prompt that touches each risk, not bolted on at the end — which is exactly where the Five Challenge said POCs fail.
+```text
+src/
+  app/
+    navigation/       # App header, wizard header, stepper, navigation helpers
+    providers/        # Cross-feature application context
+  features/
+    search/           # S1-S2, Wikipedia search, subject classification
+    timeline/         # S3 and timeline generation helpers
+    custom-moments/   # S4, drawer, uploads, validation
+    guardrails/       # S5 and editorial review modal
+    saved-draft/      # S6 and saved-draft summaries
+    studio/           # S7 Voice Studio shell, SS1-SS4, studio helpers
+  shared/
+    ui/               # Reusable visual primitives
+    hooks/            # Reusable React hooks
+  lib/                # Stable safety and domain seams
+  services/           # Optional future remote-storage adapters
+  data/               # Seeded demo profiles
+  types/              # Shared contracts and persisted schema
+  dev/                # Development-only test harnesses
+```
+
+Use the `@/` alias for imports rooted at `src/`. The old `src/components`, `src/screens`, and `src/studio` barrels remain as compatibility entrypoints while existing consumers transition.
+
+## Start Here
+
+1. Read [`docs/00-PROJECT-RULES.md`](docs/00-PROJECT-RULES.md) for the safety gates and locked stack.
+2. Read [`docs/01-ARCHITECTURE.md`](docs/01-ARCHITECTURE.md) for data flow and feature ownership.
+3. Start UI changes in the owning `src/features/` folder.
+4. Reuse primitives from `src/shared/ui/`.
+5. Keep persisted schema changes in `src/types/` and profile persistence changes in `src/lib/storage.ts`.
+
+## Documentation
+
+| File | Purpose |
+|---|---|
+| [`docs/00-PROJECT-RULES.md`](docs/00-PROJECT-RULES.md) | Locked stack, coding standards, and safety gates |
+| [`docs/01-ARCHITECTURE.md`](docs/01-ARCHITECTURE.md) | Folder map, data flow, AI seam |
+| [`docs/02-DESIGN-SYSTEM.md`](docs/02-DESIGN-SYSTEM.md) | Tokens, primitives, motion, accessibility |
+| [`docs/03-DATA-MODEL.md`](docs/03-DATA-MODEL.md) | Types and localStorage schema |
+| [`docs/04-SCREENS.md`](docs/04-SCREENS.md) | Wizard screens and Voice Studio steps |
+| [`docs/05-STATES.md`](docs/05-STATES.md) | Loading, empty, error, and edge states |
+| [`docs/08-AI-SAFETY.md`](docs/08-AI-SAFETY.md) | AI safety implementation details |
+| [`docs/09-MONGODB-READINESS.md`](docs/09-MONGODB-READINESS.md) | Optional future remote-storage seam |
+
+## Safety Boundaries
+
+- `src/lib/ai.ts` is the single client AI seam. The current build does not call an external AI provider.
+- `src/lib/storage.ts` owns profile-draft persistence. `HowItWorksPanel` separately stores one non-profile UI preference for its disclosure state.
+- `src/lib/sanitize.ts` treats producer text as untrusted data.
+- `src/lib/resolver.ts` is the pure Emotional Resolver engine.

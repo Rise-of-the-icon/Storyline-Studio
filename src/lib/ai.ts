@@ -5,26 +5,26 @@
  * @see docs/01-ARCHITECTURE.md · docs/08-AI-SAFETY.md
  */
 
-import type { ResolverOutput } from "../types/resolver";
+import type { ResolverOutput } from "@/types/resolver";
 import type {
   CustomMoment,
   DigitalTwinProfile,
   GuardrailReview,
   TimelineEvent,
-} from "../types/twin";
+} from "@/types/twin";
 import type {
   ChatPromptCategory,
   ChatPromptChip,
-} from "../studio/studioCopy";
+} from "@/features/studio/studioCopy";
 import {
   CHAT_DEMO_DISCLAIMER,
   CHAT_INSUFFICIENT_SOURCE,
   CHAT_PROMPT_CHIPS,
-} from "../studio/studioCopy";
+} from "@/features/studio/studioCopy";
 import { eligibleVoiceStudioEvents } from "./contentModel";
 import { sanitizeFreeText } from "./sanitize";
-import type { StudioSceneSettings } from "../studio/studioResolver";
-import { getNarrativeGoalText } from "../studio/studioResolver";
+import type { StudioSceneSettings } from "@/features/studio/studioResolver";
+import { getNarrativeGoalText } from "@/features/studio/studioResolver";
 
 export const GROUNDED_REFUSAL =
   "I don't have a verified record of that." as const;

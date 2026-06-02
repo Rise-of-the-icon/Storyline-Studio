@@ -49,7 +49,7 @@ describe("stateCopy — brief-mandated loading titles (exact strings)", () => {
 
 describe("stateCopy — trailing ellipsis invariant (LoadingState renderer contract)", () => {
   // LoadingState skips its decorative gold-pulse `…` when the title
-  // already ends with one (see src/components/LoadingState.tsx). Drop
+  // already ends with one (see src/shared/ui/LoadingState.tsx). Drop
   // the trailing `…` from these constants and the screen will render
   // "Searching public sources …" with the decorative pulse instead —
   // breaking the cinematic single-glyph look the brief specified.

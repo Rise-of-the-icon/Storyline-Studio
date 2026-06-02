@@ -12,6 +12,56 @@ Each entry records:
 
 ---
 
+## 2026-06-02 · Feature-oriented project structure
+
+**What changed**
+Reorganized the React source tree around application ownership without changing runtime behavior, stored data, public component names, or safety seams. Reusable visual primitives now live in `src/shared/ui/`; reusable hooks live in `src/shared/hooks/`; wizard navigation lives in `src/app/navigation/`; global draft state lives in `src/app/providers/`; and each screen flow now lives beside its feature-specific helpers under `src/features/`. Added an `@/` alias for stable imports rooted at `src/`.
+
+**Compatibility and safety**
+- Stable safety paths remain unchanged: `src/lib/ai.ts`, `src/lib/storage.ts`, `src/lib/sanitize.ts`, `src/lib/resolver.ts`, `src/lib/guardrails.ts`, and `src/lib/contentModel.ts`.
+- Compatibility barrels remain at `src/components/index.ts`, `src/screens/index.ts`, and `src/studio/index.ts`.
+- No schema version, localStorage key, component prop, or user-facing behavior changed.
+
+**Developer onboarding**
+Replaced the old build-kit README with an application README covering setup, commands, project folders, start-here guidance, and safety boundaries. Updated the architecture guide to document feature ownership, the `@/` alias, compatibility barrels, and the isolated non-profile `HowItWorksPanel` disclosure preference.
+
+---
+
+## 2026-06-02 · Compact custom-moment media summaries
+
+**What changed**
+Normalized saved custom-moment media previews to the same compact visual scale as the surrounding S4 cards. Uploaded screenshots previously rendered at full card width and could look like a second oversized form embedded inside the moment. Saved cards now use a two-column attachment grid: images crop into fixed-height thumbnails, while video and YouTube attachments render as matching play tiles. Each tile opens the original attachment in a new tab.
+
+**Files touched**
+- `src/screens/S4CustomMoments.tsx` - replaced full-width inline media players with compact, keyboard-focusable summary tiles.
+- `src/types/twin.ts` - corrected the media field comment to reflect uploaded files and YouTube references.
+
+**Accessibility and responsive behavior**
+Every attachment tile is a semantic link with an accessible open label and visible keyboard focus ring. The two-column grid stays compact at phone and desktop widths without allowing uploaded UI screenshots to dominate the card.
+
+---
+
+## 2026-06-02 · Restrained cinematic motion
+
+**What changed**
+Extended the existing CSS-only motion system across the core RICON Studio flow. Landing copy now eases into view, search results enter with a capped stagger, Voice Studio sub-steps use the existing directional `StepTransition`, guardrail clearance arrives softly, and completed wizard steps plus locked voice context receive a one-shot glow pulse. Existing timeline-card and resolver reveals remain the primary story moments.
+
+**Files touched**
+- `src/index.css` - added reusable cinematic entrance, stagger, and one-shot completion utilities with reduced-motion gates.
+- `src/screens/S1Search.tsx` - added landing-hero and capped search-result entrance choreography.
+- `src/studio/VoiceStudio.tsx` - wrapped SS1-SS4 mounts in directional `StepTransition`.
+- `src/studio/steps/SS4GuardrailClearance.tsx` - added restrained clearance and finalization feedback.
+- `src/components/WizardStepper.tsx` - added one-shot completion glow to completed step swatches.
+- `docs/02-DESIGN-SYSTEM.md` - documented the motion hierarchy and reduced-motion rule.
+
+**User-facing behavior**
+Transitions now help users follow progress without slowing the workflow. Search-result staggering is capped after the sixth result, completion glows run once, and all new motion resolves within 420 ms except the restrained 1.15 s one-shot glow.
+
+**Accessibility and performance**
+All new animations are inside `prefers-reduced-motion: no-preference`; reduced-motion users see the same content and state changes instantly. Motion uses opacity and small transforms, with `box-shadow` limited to one-shot completion feedback. No dependency was added.
+
+---
+
 ## 2026-06-01 · Custom moment media attachments
 
 **What changed**
@@ -40,6 +90,71 @@ Attachment controls use native labels, a native select, semantic buttons, image 
 | Build | `npm run build` | green - 111 modules transformed |
 | Test | `npm test` | green - 29 files / 1,210 tests pass |
 | Lint | - | not configured (`QA-001`) |
+
+---
+
+## 2026-06-02 · Premium card interaction feedback
+
+**What changed**
+Standardized hover, keyboard-focus, selected, disabled, and pressed feedback across the clickable-card system. Search results, demo subject cards, timeline review cards, custom moment cards, and Voice Studio event selectors now share a restrained border lift, subtle gold glow, and shallow elevation treatment. Shared buttons gain brief pressed feedback.
+
+**Files touched**
+- `src/index.css` - added reusable interaction-card states, including reduced-motion behavior.
+- `src/components/Button.tsx` - added pointer affordance and subtle pressed feedback while preserving disabled behavior.
+- `src/screens/S1Search.tsx` - styled search-result selection cards, converted demo profiles into full-card buttons, and polished filter-chip press feedback.
+- `src/screens/S3TimelineReview.tsx` - added hover and focus-within depth to timeline event cards with internal approval actions.
+- `src/screens/S4CustomMoments.tsx` - added hover and focus-within depth to custom moment cards with internal edit/delete actions.
+- `src/studio/steps/SS1EventSelector.tsx` - added matching hover, focus, active, and selected states to approved Voice Studio event cards.
+
+**User-facing behavior**
+Clickable cards now read as interactive before click, keyboard focus has equivalent visual quality, selected cards remain clearly highlighted, disabled selection states stop lifting, and button presses provide immediate tactile feedback.
+
+**Accessibility and responsive behavior**
+Fully clickable cards use semantic buttons with visible focus rings. Cards containing internal actions use `focus-within` to surface equivalent depth when tabbing through controls. Motion is disabled under `prefers-reduced-motion: reduce`.
+
+---
+
+## 2026-06-02 · MongoDB-ready storage service seam
+
+**What changed**
+Prepared profile persistence for a later MongoDB-backed service without enabling a backend or changing current local-first behavior. Successful local profile saves and explicit active-draft deletions now pass through a dormant remote coordinator. A database-agnostic HTTP adapter defines the future browser-to-server contract.
+
+**Files touched**
+- `src/lib/storage.ts` - mirrors successful local saves and explicit draft deletions to the optional remote coordinator.
+- `src/services/twinRemoteStorage.ts` - defines the async remote profile-storage contract, opt-in configuration hook, serialized write queue, and failure isolation.
+- `src/services/httpTwinRemoteStorage.ts` - provides the future `/api/twins` HTTP adapter without importing a MongoDB driver into browser code.
+- `src/services/twinRemoteStorage.test.ts` - covers queued mirroring, failure isolation, local-path integration, response validation, and the HTTP CRUD request contract.
+- `docs/09-MONGODB-READINESS.md` - documents endpoint expectations, server responsibilities, bootstrap wiring, and the media-storage limitation.
+- `docs/01-ARCHITECTURE.md`, `docs/03-DATA-MODEL.md`, `README.md` - link the new storage seam from the existing architecture docs.
+
+**User-facing behavior**
+No user-facing behavior changes. The POC still saves locally and remains usable if no backend is configured or a future remote mirror fails.
+
+**Known limitations**
+- Remote sync is intentionally dormant until an authenticated API exists.
+- The current client-only image/video data URLs must move to blob storage before production MongoDB sync is enabled.
+- Multi-device conflict resolution, retry persistence, authorization, and server-side schema validation belong to the backend phase.
+
+**Checks**
+- `npm run build`
+- `npm test`
+- `git diff --check`
+
+---
+
+## 2026-06-02 · Multi-file custom moment uploads
+
+**What changed**
+Image and Video attachments in Add/Edit Custom Moment now support selecting and adding multiple local files in one batch. YouTube remains a single URL-based attachment.
+
+**Files touched**
+- `src/components/CustomMomentDrawer.tsx` - stores the complete file-picker selection, validates each file, applies browser-draft limits across the batch, and adds the uploaded files together.
+
+**User-facing behavior**
+The native Image and Video picker accepts multiple files. The Add button reports the selected file count, and the optional media label clearly applies to every file in that batch. If the selection exceeds the remaining attachment count, contains an invalid file, or exceeds browser-draft storage limits, the batch is rejected with a specific error.
+
+**Accessibility and responsive behavior**
+The existing labeled native file input remains keyboard and assistive-technology accessible. File-count feedback is visible in the Add button, and validation errors remain associated with the picker.
 
 ---
 
@@ -409,13 +524,13 @@ Loading surfaces across the wizard read as generic grey pulse blocks with no bra
 
 **Known limitations**
 - `<StudioPanelSkeleton>` not wired in studio yet — studio worker territory (**QA-064**).
-- SS1–SS4 sub-steps don't use `<StepTransition>` yet — studio worker can adopt (**QA-065**).
+- SS1–SS4 sub-steps now use directional `<StepTransition>` mounts (resolved 2026-06-02, **QA-065**).
 - Screen transitions are fade-only (no directional slide) — forward/back slide available on the component but `App.tsx` doesn't pass `direction` yet (**QA-066**).
 - Shimmer runs on every mounted skeleton even when off-screen — acceptable today (≤3 per surface) but tracked (**QA-068**).
 
 **Follow-up tasks**
 - **QA-064** — adopt `<StudioPanelSkeleton>` in studio side panels.
-- **QA-065** — wrap SS1–SS4 in `<StepTransition>`.
+- **QA-065** — resolved 2026-06-02: SS1–SS4 now mount inside directional `<StepTransition>` wrappers.
 - **QA-066** — derive slide `direction` from screen index diff.
 - **QA-067** — first real consumer for `useReducedMotion()`.
 - **QA-068** — pause shimmer when skeleton scrolls off-screen.

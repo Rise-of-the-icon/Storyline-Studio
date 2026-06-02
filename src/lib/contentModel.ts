@@ -29,7 +29,7 @@ import type {
   SourceType,
   TimelineEvent,
   Visibility,
-} from "../types/twin";
+} from "@/types/twin";
 
 // ===========================================================================
 // Source-type mapping

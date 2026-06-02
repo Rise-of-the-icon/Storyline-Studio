@@ -1,10 +1,10 @@
-import type { Confidence, Sensitivity } from "../types/twin";
+import type { Confidence, Sensitivity } from "@/types/twin";
 import type {
   Domain,
   ResolverBeat,
   ResolverInput,
   ResolverOutput,
-} from "../types/resolver";
+} from "@/types/resolver";
 
 // ---------------------------------------------------------------------------
 // RESOLVER_CONFIG — calibrated heuristics (not a trained model). Tune here.
