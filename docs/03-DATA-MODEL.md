@@ -1,6 +1,10 @@
 # 03 · Data Model
 
+> **Expanded reference:** see [`data-model.md`](data-model.md) for the full entity map, `SCHEMA_VERSION` 2 migrations, sanitization limits, and remote-storage seam. This file remains a compact type cheat sheet.
+
 All types live in `src/types/`. All persistence goes through `src/lib/storage.ts`. Nothing else touches `localStorage`. Every stored object carries a `schemaVersion` so we can detect drift (Five Challenge T2).
+
+**Current schema version:** `2` (see `src/types/twin.ts`).
 
 ## Entities & TypeScript types
 

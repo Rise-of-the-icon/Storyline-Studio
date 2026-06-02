@@ -63,11 +63,14 @@ Use the `@/` alias for imports rooted at `src/`. The old `src/components`, `src/
 
 | File | Purpose |
 |---|---|
+| [`docs/product-flow.md`](docs/product-flow.md) | **Start here for behavior** — full producer flow per screen (S1–S7, consent, Voice Context Preview) |
+| [`docs/data-model.md`](docs/data-model.md) | **Start here for types** — entities, storage keys, migrations, resolver shapes |
+| [`docs/known-limitations.md`](docs/known-limitations.md) | POC boundaries and Phase 2 gaps |
 | [`docs/00-PROJECT-RULES.md`](docs/00-PROJECT-RULES.md) | Locked stack, coding standards, and safety gates |
 | [`docs/01-ARCHITECTURE.md`](docs/01-ARCHITECTURE.md) | Folder map, data flow, AI seam |
 | [`docs/02-DESIGN-SYSTEM.md`](docs/02-DESIGN-SYSTEM.md) | Tokens, primitives, motion, accessibility |
-| [`docs/03-DATA-MODEL.md`](docs/03-DATA-MODEL.md) | Types and localStorage schema |
-| [`docs/04-SCREENS.md`](docs/04-SCREENS.md) | Wizard screens and Voice Studio steps |
+| [`docs/03-DATA-MODEL.md`](docs/03-DATA-MODEL.md) | Short legacy type reference |
+| [`docs/04-SCREENS.md`](docs/04-SCREENS.md) | Wizard screens and Voice Studio steps (regions) |
 | [`docs/05-STATES.md`](docs/05-STATES.md) | Loading, empty, error, and edge states |
 | [`docs/08-AI-SAFETY.md`](docs/08-AI-SAFETY.md) | AI safety implementation details |
 | [`docs/09-MONGODB-READINESS.md`](docs/09-MONGODB-READINESS.md) | Optional future remote-storage seam |

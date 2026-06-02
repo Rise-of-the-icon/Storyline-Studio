@@ -12,6 +12,36 @@ Each entry records:
 
 ---
 
+## 2026-06-02 · Product flow and data model documentation
+
+**What changed**
+Added developer-facing product documentation for the implemented seven-screen wizard + Voice Studio flow, a consolidated data-model reference (`SCHEMA_VERSION` 2), and an explicit known-limitations index. No runtime or schema changes.
+
+**Files touched**
+- `docs/product-flow.md` — screen-by-screen purpose, actions, data, validation, states, and accessibility for S1–S7, consent on S2, and Voice Context Preview (SS4 finalized).
+- `docs/data-model.md` — entities, relationships, localStorage keys, migrations, resolver types, sanitization limits, remote-storage seam.
+- `docs/known-limitations.md` — POC boundaries (AI mock, localStorage, heuristic timeline, guardrails, voice not connected, media data URLs).
+- `docs/implementation-log.md` — this entry.
+
+**User-facing behavior**
+None. Documentation only.
+
+**Known limitations**
+- No screenshots added — the repo has no `docs/images/` (or similar) asset folder for doc illustrations.
+- Numbered docs (`03-DATA-MODEL.md`, `04-SCREENS.md`) remain; new files are the onboarding-oriented canonical references linked from the README.
+
+**Follow-up tasks**
+- Add `docs/images/` and screenshots when a capture workflow is agreed (`QA` backlog as needed).
+- Keep `product-flow.md` in sync when screen gates or `canSaveDraft` policy change.
+
+**Checks**
+| Check | Command | Result |
+|---|---|---|
+| Build | — | not required (docs-only) |
+| Test | — | not required (docs-only) |
+
+---
+
 ## 2026-06-02 · Feature-oriented project structure
 
 **What changed**
