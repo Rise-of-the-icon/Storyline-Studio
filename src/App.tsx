@@ -12,6 +12,15 @@ import { GuardrailsTest } from "./dev/GuardrailsTest";
 import { ResolverTest } from "./dev/ResolverTest";
 import { StorageTest } from "./dev/StorageTest";
 import { SCREEN_META, type ScreenId } from "./types/navigation";
+import { configureTwinRemoteStorage } from "@/services/twinRemoteStorage";
+import { createHttpTwinRemoteStorage } from "@/services/httpTwinRemoteStorage";
+
+
+configureTwinRemoteStorage(
+  createHttpTwinRemoteStorage({
+    baseUrl: "https://ricon-storyline-production.up.railway.app/api",
+  })
+);
 
 const SCREEN_COMPONENTS: Record<ScreenId, ComponentType> = {
   S1: S1Search,
