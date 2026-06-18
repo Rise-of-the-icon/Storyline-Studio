@@ -280,6 +280,8 @@ export function VoiceContextPreview({
     scriptOptions[0]?.id ?? "",
   );
   const voiceClipCacheRef = useRef<Map<string, CachedVoiceClip>>(new Map());
+  const autoPrewarmKeyRef = useRef("");
+  const prewarmRunRef = useRef(0);
 
   useEffect(() => {
     voiceClipCacheRef.current = readPersistentVoiceClipCache();
@@ -370,6 +372,69 @@ export function VoiceContextPreview({
     downloadTextFile(filename, body);
   };
 
+  const resolveCachedClip = (cacheKey: string): CachedVoiceClip | null => {
+    const cachedClip = voiceClipCacheRef.current.get(cacheKey);
+    if (!cachedClip) return null;
+    if (
+      cachedClip.expiresAtISO &&
+      Number.isFinite(Date.parse(cachedClip.expiresAtISO)) &&
+      Date.parse(cachedClip.expiresAtISO) <= Date.now()
+    ) {
+      voiceClipCacheRef.current.delete(cacheKey);
+      persistVoiceClipCache(voiceClipCacheRef.current);
+      return null;
+    }
+    return cachedClip;
+  };
+
+  const synthesizeAndCacheClip = async (
+    family: ResearchEmotionFamily,
+    text: string,
+    trimmedVoiceId: string,
+    resolvedModelId: string,
+  ): Promise<CachedVoiceClip> => {
+    const response = await fetch(
+      `${API_BASE.replace(/\/$/, "")}/api/research/voice/speak`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          emotion_family: family,
+          voice_id: trimmedVoiceId,
+          model_id: resolvedModelId,
+        }),
+      },
+    );
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.detail ?? `Voice synthesis failed (${response.status})`);
+    }
+    const payload = (await response.json()) as {
+      audio_base64: string;
+      meta: Record<string, unknown>;
+    };
+    const generatedAtISO = new Date().toISOString();
+    const expiresAtISO = new Date(Date.now() + VOICE_CLIP_CACHE_TTL_MS).toISOString();
+    const clip: CachedVoiceClip = {
+      audioBase64: payload.audio_base64,
+      meta: payload.meta,
+      generatedAtISO,
+      expiresAtISO,
+    };
+    const cacheKey = voiceClipCacheKey({
+      twinId: draft.twinId,
+      eventId: event.id,
+      text,
+      emotionFamily: family,
+      voiceId: trimmedVoiceId,
+      modelId: resolvedModelId,
+    });
+    voiceClipCacheRef.current.set(cacheKey, clip);
+    persistVoiceClipCache(voiceClipCacheRef.current);
+    return clip;
+  };
+
   const loadVoicePreview = async (
     family: ResearchEmotionFamily,
     text = synthesisScript,
@@ -392,82 +457,47 @@ export function VoiceContextPreview({
       voiceId: trimmedVoiceId,
       modelId: resolvedModelId,
     });
-    const cachedClip = voiceClipCacheRef.current.get(cacheKey);
+    const cachedClip = resolveCachedClip(cacheKey);
     if (cachedClip) {
-      if (
-        cachedClip.expiresAtISO &&
-        Number.isFinite(Date.parse(cachedClip.expiresAtISO)) &&
-        Date.parse(cachedClip.expiresAtISO) <= Date.now()
-      ) {
-        voiceClipCacheRef.current.delete(cacheKey);
-        persistVoiceClipCache(voiceClipCacheRef.current);
-      } else {
-        const nextUrl = audioUrlFromBase64(cachedClip.audioBase64);
-        setAudioSrc((current) => {
-          if (current) URL.revokeObjectURL(current);
-          return nextUrl;
-        });
-        setSynthesisMeta({
-          ...cachedClip.meta,
-          cached: true,
-          client_cached: true,
-        });
-        setGeneratedClip({
-          family,
-          model: String(cachedClip.meta.model ?? resolvedModelId),
-          generatedAtISO: cachedClip.generatedAtISO,
-          cached: true,
-        });
-        setSynthesisStatus("ready");
-        return;
-      }
-    }
-
-    setSynthesisStatus("generating");
-    try {
-      const response = await fetch(
-        `${API_BASE.replace(/\/$/, "")}/api/research/voice/speak`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text,
-            emotion_family: family,
-            voice_id: trimmedVoiceId,
-            model_id: resolvedModelId,
-          }),
-        },
-      );
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail ?? `Voice synthesis failed (${response.status})`);
-      }
-      const payload = (await response.json()) as {
-        audio_base64: string;
-        meta: Record<string, unknown>;
-      };
-      const generatedAtISO = new Date().toISOString();
-      const expiresAtISO = new Date(
-        Date.now() + VOICE_CLIP_CACHE_TTL_MS,
-      ).toISOString();
-      voiceClipCacheRef.current.set(cacheKey, {
-        audioBase64: payload.audio_base64,
-        meta: payload.meta,
-        generatedAtISO,
-        expiresAtISO,
-      });
-      persistVoiceClipCache(voiceClipCacheRef.current);
-      const nextUrl = audioUrlFromBase64(payload.audio_base64);
+      const nextUrl = audioUrlFromBase64(cachedClip.audioBase64);
       setAudioSrc((current) => {
         if (current) URL.revokeObjectURL(current);
         return nextUrl;
       });
-      setSynthesisMeta(payload.meta);
+      setSynthesisMeta({
+        ...cachedClip.meta,
+        cached: true,
+        client_cached: true,
+      });
       setGeneratedClip({
         family,
-        model: String(payload.meta.model ?? resolvedModelId),
-        generatedAtISO,
-        cached: payload.meta.cached === true,
+        model: String(cachedClip.meta.model ?? resolvedModelId),
+        generatedAtISO: cachedClip.generatedAtISO,
+        cached: true,
+      });
+      setSynthesisStatus("ready");
+      return;
+    }
+
+    setSynthesisStatus("generating");
+    try {
+      const clip = await synthesizeAndCacheClip(
+        family,
+        text,
+        trimmedVoiceId,
+        resolvedModelId,
+      );
+      const nextUrl = audioUrlFromBase64(clip.audioBase64);
+      setAudioSrc((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return nextUrl;
+      });
+      setSynthesisMeta(clip.meta);
+      setGeneratedClip({
+        family,
+        model: String(clip.meta.model ?? resolvedModelId),
+        generatedAtISO: clip.generatedAtISO,
+        cached: clip.meta.cached === true,
       });
       setSynthesisStatus("ready");
     } catch (err) {
@@ -476,6 +506,36 @@ export function VoiceContextPreview({
         err instanceof Error ? err.message : "Voice synthesis failed.",
       );
     }
+  };
+
+  const prewarmRemainingEmotionClips = async (text = synthesisScript) => {
+    const trimmedVoiceId = voiceId.trim();
+    if (!trimmedVoiceId) return;
+    const resolvedModelId = modelId.trim() || "inworld-tts-2";
+    const runId = ++prewarmRunRef.current;
+    const families = RESEARCH_EMOTION_OPTIONS.filter(
+      (family) => family !== emotionFamily,
+    );
+    await Promise.all(
+      families.map(async (family) => {
+        if (runId !== prewarmRunRef.current) return;
+        const cacheKey = voiceClipCacheKey({
+          twinId: draft.twinId,
+          eventId: event.id,
+          text,
+          emotionFamily: family,
+          voiceId: trimmedVoiceId,
+          modelId: resolvedModelId,
+        });
+        const cached = resolveCachedClip(cacheKey);
+        if (cached) return;
+        try {
+          await synthesizeAndCacheClip(family, text, trimmedVoiceId, resolvedModelId);
+        } catch {
+          // best-effort prewarm only; primary selected tone remains functional.
+        }
+      }),
+    );
   };
 
   const handleEmotionFamilyChange = (nextFamily: ResearchEmotionFamily) => {
@@ -492,7 +552,36 @@ export function VoiceContextPreview({
 
   const handleGenerateVoice = async () => {
     await loadVoicePreview(emotionFamily);
+    void prewarmRemainingEmotionClips();
   };
+
+  useEffect(() => {
+    const trimmedVoiceId = voiceId.trim();
+    if (!trimmedVoiceId) return;
+    const resolvedModelId = modelId.trim() || "inworld-tts-2";
+    const prewarmKey = [
+      draft.twinId,
+      event.id,
+      selectedScriptOption?.id ?? "default-script",
+      synthesisScript,
+      trimmedVoiceId,
+      resolvedModelId,
+    ].join("::");
+    if (autoPrewarmKeyRef.current === prewarmKey) return;
+    autoPrewarmKeyRef.current = prewarmKey;
+    void (async () => {
+      await loadVoicePreview(emotionFamily, synthesisScript);
+      await prewarmRemainingEmotionClips(synthesisScript);
+    })();
+  }, [
+    draft.twinId,
+    emotionFamily,
+    event.id,
+    modelId,
+    selectedScriptOption?.id,
+    synthesisScript,
+    voiceId,
+  ]);
 
   return (
     <section
