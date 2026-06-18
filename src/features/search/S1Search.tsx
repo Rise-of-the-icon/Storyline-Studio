@@ -167,10 +167,9 @@ function BuiltProfilePreview({
   onEdit: () => void;
 }) {
   const summary = getDraftSummary(draft);
-  const publicEvents = draft.timeline.filter(
-    (event) => event.visibility === "Public" && event.approvalStatus === "Reviewed",
+  const verifiedEvents = draft.timeline.filter(
+    (event) => event.approvalStatus === "Reviewed",
   );
-  const latestVoiceContext = draft.savedVoiceContexts?.at(-1);
 
   return (
     <section
@@ -203,12 +202,8 @@ function BuiltProfilePreview({
 
       <dl className="mt-5 grid gap-x-5 gap-y-2 font-mono text-xs text-textsub sm:grid-cols-2">
         <div className="flex gap-2">
-          <dt className="text-textmuted">Public events</dt>
-          <dd>{publicEvents.length}</dd>
-        </div>
-        <div className="flex gap-2">
-          <dt className="text-textmuted">Voice contexts</dt>
-          <dd>{summary.savedVoiceContextCount}</dd>
+          <dt className="text-textmuted">Verified events</dt>
+          <dd>{verifiedEvents.length}</dd>
         </div>
         <div className="flex gap-2">
           <dt className="text-textmuted">Status</dt>
@@ -220,31 +215,17 @@ function BuiltProfilePreview({
         </div>
       </dl>
 
-      {latestVoiceContext && (
-        <div className="mt-5 rounded-md border border-border bg-card p-4">
-          <p className="label-mono">Voice context</p>
-          <p className="mt-2 font-body text-sm text-text">
-            {latestVoiceContext.eventTitle} · {latestVoiceContext.signatureState} ·{" "}
-            {latestVoiceContext.mode}
-          </p>
-          <p className="mt-1 font-mono text-xs text-textsub">
-            {latestVoiceContext.audience} · {latestVoiceContext.narrativeGoalLabel} ·{" "}
-            {latestVoiceContext.steeringTag}
-          </p>
-        </div>
-      )}
-
       <div className="mt-5 space-y-3">
-        <p className="label-mono">Public storyline data</p>
+        <p className="label-mono">Verified storyline events</p>
         <div className="grid gap-3">
-          {publicEvents.map((event) => (
+          {verifiedEvents.map((event) => (
             <article
               key={event.id}
               className="rounded-md border border-border bg-card p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="muted">{event.year}</Badge>
-                <Badge variant="ok">Public</Badge>
+                <Badge variant="ok">Verified</Badge>
                 <h3 className="font-body text-sm font-semibold text-text">
                   {event.title}
                 </h3>
@@ -614,10 +595,10 @@ export function S1Search() {
                         <span className="font-medium">{summary.subjectName}</span>
                         <span className="text-textsub">
                           {" "}
-                          — {summary.approvedEventCount} approved event
+                          — {summary.approvedEventCount} verified event
                           {summary.approvedEventCount === 1 ? "" : "s"} ·{" "}
-                          {summary.savedVoiceContextCount} voice context
-                          {summary.savedVoiceContextCount === 1 ? "" : "s"}
+                          {summary.customMomentCount} custom moment
+                          {summary.customMomentCount === 1 ? "" : "s"}
                         </span>
                       </p>
                     </Card.Header>
