@@ -20,7 +20,8 @@ import {
   WALT_VOICE_STUDIO_EVENT_ID,
 } from "./waltVoiceSeed";
 
-const WALT_VOICE_ID = "default--z5zasdfwci5ofrt-gmsjw__walt";
+const WALT_VOICE_ID =
+  import.meta.env.VITE_WALT_VOICE_ID || "default--z5zasdfwci5ofrt-gmsjw__walt";
 
 type ResearchTwinId = "walt" | "tom" | "david";
 
