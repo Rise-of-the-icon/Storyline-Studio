@@ -161,10 +161,12 @@ function BuiltProfilePreview({
   draft,
   onClose,
   onEdit,
+  onResume,
 }: {
   draft: DigitalTwinProfile;
   onClose: () => void;
   onEdit: () => void;
+  onResume: () => void;
 }) {
   const summary = getDraftSummary(draft);
   const verifiedEvents = draft.timeline.filter(
@@ -191,6 +193,9 @@ function BuiltProfilePreview({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
+          <Button variant="primary" size="small" onClick={onResume}>
+            Resume draft
+          </Button>
           <Button variant="secondary" size="small" onClick={onEdit}>
             Edit profile
           </Button>
@@ -553,6 +558,14 @@ export function S1Search() {
     [goTo, setDraft],
   );
 
+  const resumeProfile = useCallback(
+    (profile: DigitalTwinProfile) => {
+      setDraft(profile);
+      goTo("S2");
+    },
+    [goTo, setDraft],
+  );
+
   return (
     <div className="mx-auto max-w-[680px] px-4 py-10">
       <div className="cinematic-enter">
@@ -604,6 +617,14 @@ export function S1Search() {
                     </Card.Header>
                     <div className="flex shrink-0 flex-wrap gap-2 self-start sm:self-auto">
                       <Button
+                        variant="primary"
+                        size="small"
+                        onClick={() => resumeProfile(profile)}
+                        aria-label={`Resume draft for ${summary.subjectName}`}
+                      >
+                        Resume draft
+                      </Button>
+                      <Button
                         variant="secondary"
                         size="small"
                         onClick={() => editProfile(profile)}
@@ -612,7 +633,7 @@ export function S1Search() {
                         Edit profile
                       </Button>
                       <Button
-                        variant="primary"
+                        variant="secondary"
                         size="small"
                         onClick={() =>
                           setViewingBuiltProfile((current) =>
@@ -632,6 +653,7 @@ export function S1Search() {
                     <BuiltProfilePreview
                       draft={profile}
                       onEdit={() => editProfile(profile)}
+                      onResume={() => resumeProfile(profile)}
                       onClose={() => setViewingBuiltProfile(null)}
                     />
                   )}
