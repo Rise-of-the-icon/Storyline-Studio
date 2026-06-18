@@ -7,21 +7,13 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import type { DigitalTwinProfile } from "@/types/twin";
 
 function isBuiltProfile(draft: DigitalTwinProfile): boolean {
-  const reviewableEvents = draft.timeline.filter(
-    (event) => event.visibility !== "Private",
+  const hasReviewedEvent = draft.timeline.some(
+    (event) => event.approvalStatus === "Reviewed",
   );
-  const allReviewableEventsReady =
-    reviewableEvents.length > 0 &&
-    reviewableEvents.every(
-      (event) =>
-        event.visibility === "Public" && event.approvalStatus === "Reviewed",
-    );
 
   return Boolean(
     draft.draftStatus === "saved" &&
-      draft.consentAcknowledged &&
-      (draft.savedVoiceContexts?.length ?? 0) > 0 &&
-      allReviewableEventsReady,
+      hasReviewedEvent,
   );
 }
 
