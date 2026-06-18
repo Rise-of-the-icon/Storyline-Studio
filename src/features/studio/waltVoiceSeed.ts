@@ -2,6 +2,8 @@ import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
 import type { VoiceScriptOption } from "./VoiceContextPreview";
 
 const nowISO = "2026-06-10T00:00:00.000Z";
+export const WALT_VOICE_ID =
+  import.meta.env.VITE_WALT_VOICE_ID || "default--z5zasdfwci5ofrt-gmsjw__walt";
 
 export const WALT_VOICE_STUDIO_EVENT_ID = "walt-liquor-fake-it-till-you-make-it-2020";
 

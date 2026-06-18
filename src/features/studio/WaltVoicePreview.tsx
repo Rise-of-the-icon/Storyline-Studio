@@ -16,13 +16,11 @@ import {
   TOM_VOICE_STUDIO_EVENT_ID,
 } from "./tomVoiceSeed";
 import {
+  WALT_VOICE_ID,
   WALT_VOICE_STUDIO_DRAFT,
   WALT_VOICE_STUDIO_EVENT_ID,
   WALT_VOICE_SCRIPT_OPTIONS,
 } from "./waltVoiceSeed";
-
-const WALT_VOICE_ID =
-  import.meta.env.VITE_WALT_VOICE_ID || "default--z5zasdfwci5ofrt-gmsjw__walt";
 
 type ResearchTwinId = "walt" | "tom" | "david";
 

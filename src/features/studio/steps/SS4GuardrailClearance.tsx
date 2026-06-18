@@ -10,6 +10,7 @@ import {
 } from "../clearance";
 import { Phase2VisionModal } from "../Phase2VisionModal";
 import { VoiceContextPreview } from "../VoiceContextPreview";
+import { resolveTwinVoiceConfig } from "../twinVoiceConfig";
 
 export function SS4GuardrailClearance() {
   const { draft, goTo, setStudioStep } = useTwin();
@@ -18,6 +19,7 @@ export function SS4GuardrailClearance() {
   const [phase2Open, setPhase2Open] = useState(false);
 
   const selectedEvent = draft?.timeline.find((e) => e.id === selectedEventId);
+  const twinVoiceConfig = draft ? resolveTwinVoiceConfig(draft) : null;
 
   const clearance = useMemo(() => {
     if (!draft) {
@@ -76,6 +78,8 @@ export function SS4GuardrailClearance() {
           draft={draft}
           event={selectedEvent}
           resolver={resolverOutput}
+          defaultVoiceId={twinVoiceConfig?.defaultVoiceId}
+          scriptOptions={twinVoiceConfig?.scriptOptions}
           onEditEmotionalContext={() => {
             setFinalized(false);
             setStudioStep("SS3");
