@@ -109,7 +109,7 @@ function VoiceStudioInner() {
     draft,
     studioStep,
     goBack,
-    goHome,
+    goTo,
     setDraft,
     advanceStudioStep,
     backStudioStep,
@@ -146,7 +146,7 @@ function VoiceStudioInner() {
         scene,
       });
       setDraft(finalized);
-      goHome();
+      goTo("S1");
       return;
     }
     advanceStudioStep();
