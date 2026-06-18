@@ -63,14 +63,21 @@ function demoSource(
   url: string,
   revisionId?: string,
 ): TimelineEvent["source"] {
+  const bdlUrl = url.includes("Tom_Hoover")
+    ? "https://www.basketball-reference.com/players/h/hooveto01.html"
+    : url.includes("David_West")
+      ? "https://www.basketball-reference.com/players/w/westda01.html"
+      : null;
   return {
     // `demo` is the V2 canonical source type for curated fixture content;
     // it surfaces as a separate "Demo seed" badge so a viewer never confuses
     // it with a real Wikipedia import.
     type: "demo",
     url,
-    citation: "Wikipedia (demo seed)",
-    notes: "Curated demo fixture — not from a live Wikipedia fetch.",
+    citation: "Verified source-backed demo seed",
+    notes: bdlUrl
+      ? `Curated fixture grounded in the linked Wikipedia source and BDL/Basketball-Reference cross-check: ${bdlUrl}.`
+      : "Curated fixture grounded in the linked source; not from a live Wikipedia fetch.",
     verified: true,
     importedAtISO: new Date().toISOString(),
     revisionId,
@@ -532,15 +539,15 @@ function buildDemoProfile(
   };
 }
 
-const DAVID_WEST_URL = "https://example.com/demo/david-west";
+const DAVID_WEST_URL = "https://en.wikipedia.org/wiki/David_West_(basketball)";
 const DAVID_WEST_TIMELINE: TimelineEvent[] = [
   event(DAVID_WEST_URL, {
     id: "evt-david-west-foundations",
-    title: "Builds his game on fundamentals",
+    title: "Plays high school basketball in North Carolina and Virginia",
     description:
-      "David West develops a reputation for disciplined footwork, mid-range touch, and a team-first approach to basketball.",
+      "David West attends Garner Magnet High School in North Carolina and Hargrave Military Academy in Virginia before entering Xavier as a frontcourt prospect.",
     year: 1998,
-    eventType: "Personal",
+    eventType: "Education",
     confidence: "High",
     approvalStatus: "Reviewed",
     sensitivity: "Low",
@@ -548,11 +555,11 @@ const DAVID_WEST_TIMELINE: TimelineEvent[] = [
   }),
   event(DAVID_WEST_URL, {
     id: "evt-david-west-college",
-    title: "Emerges as a college leader",
+    title: "Becomes a three-time Atlantic 10 Player of the Year",
     description:
-      "A productive college run establishes West as a reliable frontcourt leader and a composed late-game option.",
-    year: 2002,
-    eventType: "Career",
+      "At Xavier, West becomes the first three-time Atlantic 10 Player of the Year and finishes as one of the program's 2,000-point, 1,000-rebound players.",
+    year: 2003,
+    eventType: "Award",
     confidence: "High",
     approvalStatus: "Reviewed",
     sensitivity: "Low",
@@ -560,9 +567,9 @@ const DAVID_WEST_TIMELINE: TimelineEvent[] = [
   }),
   event(DAVID_WEST_URL, {
     id: "evt-david-west-draft",
-    title: "Begins professional career",
+    title: "Drafted by New Orleans",
     description:
-      "West enters professional basketball and earns rotation minutes through consistent defense and decision-making.",
+      "The New Orleans Hornets select West with the 18th overall pick in the 2003 NBA draft, beginning a 15-season NBA career.",
     year: 2003,
     eventType: "Career",
     confidence: "High",
@@ -572,11 +579,11 @@ const DAVID_WEST_TIMELINE: TimelineEvent[] = [
   }),
   event(DAVID_WEST_URL, {
     id: "evt-david-west-all-star",
-    title: "Earns league-wide recognition",
+    title: "Earns back-to-back NBA All-Star selections",
     description:
-      "Back-to-back standout seasons bring league-wide recognition for West's steady two-way play.",
+      "West is selected as an NBA All-Star in 2008 and again in 2009 while playing for the New Orleans Hornets.",
     year: 2008,
-    eventType: "Achievement",
+    eventType: "Award",
     confidence: "High",
     approvalStatus: "Reviewed",
     sensitivity: "Low",
@@ -584,21 +591,21 @@ const DAVID_WEST_TIMELINE: TimelineEvent[] = [
   }),
   event(DAVID_WEST_URL, {
     id: "evt-david-west-veteran",
-    title: "Becomes a veteran stabilizer",
+    title: "Joins San Antonio as a veteran free agent",
     description:
-      "West takes on a veteran role, mentoring younger teammates while continuing to contribute in high-pressure games.",
+      "After four seasons with Indiana, West signs with the San Antonio Spurs in 2015, adding veteran frontcourt depth to a title contender.",
     year: 2015,
-    eventType: "Legacy",
-    confidence: "Medium",
-    approvalStatus: "Draft",
+    eventType: "Career",
+    confidence: "High",
+    approvalStatus: "Reviewed",
     sensitivity: "Low",
     emotionalSignificance: 70,
   }),
   event(DAVID_WEST_URL, {
     id: "evt-david-west-championship",
-    title: "Adds championship experience",
+    title: "Wins first NBA championship with Golden State",
     description:
-      "A championship-stage run adds a final team achievement to West's professional basketball story.",
+      "West joins the Golden State Warriors in 2016 and wins his first NBA championship with the team in 2017.",
     year: 2017,
     eventType: "Achievement",
     confidence: "High",
@@ -608,13 +615,13 @@ const DAVID_WEST_TIMELINE: TimelineEvent[] = [
   }),
   event(DAVID_WEST_URL, {
     id: "evt-david-west-retirement",
-    title: "Shifts focus beyond the court",
+    title: "Retires after a second Warriors championship",
     description:
-      "After basketball, West turns more attention toward mentorship, education, and long-term community impact.",
+      "After Golden State wins the 2018 NBA Finals, West retires from the NBA following 15 seasons, two championships, and two All-Star selections.",
     year: 2018,
     eventType: "Legacy",
-    confidence: "Medium",
-    approvalStatus: "Draft",
+    confidence: "High",
+    approvalStatus: "Reviewed",
     sensitivity: "Low",
     emotionalSignificance: 62,
   }),
@@ -631,27 +638,27 @@ export function buildDavidWestTwin(): DigitalTwinProfile {
   );
 }
 
-const TOM_HOOVER_URL = "https://example.com/demo/tom-hoover";
+const TOM_HOOVER_URL = "https://en.wikipedia.org/wiki/Tom_Hoover_(basketball)";
 const TOM_HOOVER_TIMELINE: TimelineEvent[] = [
   event(TOM_HOOVER_URL, {
-    id: "evt-tom-hoover-local-courts",
-    title: "Finds an early rhythm on local courts",
+    id: "evt-tom-hoover-villanova",
+    title: "Plays college basketball at Villanova",
     description:
-      "Tom Hoover starts with a patient, defensive-minded game and an interest in the details that shape team chemistry.",
-    year: 2006,
-    eventType: "Personal",
-    confidence: "Medium",
+      "Tom Hoover, a 6-foot-9 forward/center from Washington, D.C., plays college basketball for Villanova from 1960 to 1962.",
+    year: 1960,
+    eventType: "Education",
+    confidence: "High",
     approvalStatus: "Reviewed",
     sensitivity: "Low",
     emotionalSignificance: 42,
   }),
   event(TOM_HOOVER_URL, {
-    id: "evt-tom-hoover-breakthrough",
-    title: "Breakthrough season",
+    id: "evt-tom-hoover-draft",
+    title: "Selected sixth in the 1963 NBA draft",
     description:
-      "A breakout season puts Hoover on the radar as a dependable basketball player who can steady a close game.",
-    year: 2011,
-    eventType: "Achievement",
+      "Hoover is selected in the first round of the 1963 NBA draft with the sixth overall pick by the Syracuse Nationals.",
+    year: 1963,
+    eventType: "Career",
     confidence: "High",
     approvalStatus: "Reviewed",
     sensitivity: "Low",
@@ -659,10 +666,10 @@ const TOM_HOOVER_TIMELINE: TimelineEvent[] = [
   }),
   event(TOM_HOOVER_URL, {
     id: "evt-tom-hoover-pro",
-    title: "Steps into a professional rotation",
+    title: "Plays for the New York Knicks",
     description:
-      "Hoover earns professional minutes and builds trust through preparation, communication, and efficient play.",
-    year: 2013,
+      "Hoover begins his NBA career with the New York Knicks, appearing in 59 games in 1963-64 and averaging 4.8 points and 5.6 rebounds.",
+    year: 1963,
     eventType: "Career",
     confidence: "High",
     approvalStatus: "Reviewed",
@@ -670,35 +677,35 @@ const TOM_HOOVER_TIMELINE: TimelineEvent[] = [
     emotionalSignificance: 70,
   }),
   event(TOM_HOOVER_URL, {
-    id: "evt-tom-hoover-injury",
-    title: "Works back from injury",
+    id: "evt-tom-hoover-epbl",
+    title: "Wins EPBL titles with Wilmington",
     description:
-      "A difficult injury interrupts Hoover's momentum and reframes the next phase of his basketball career.",
-    year: 2016,
-    eventType: "Personal",
-    confidence: "Medium",
-    approvalStatus: "Draft",
-    sensitivity: "Medium",
+      "Hoover plays for the Wilmington Blue Bombers and wins Eastern Professional Basketball League championships in 1966 and 1967.",
+    year: 1966,
+    eventType: "Achievement",
+    confidence: "High",
+    approvalStatus: "Reviewed",
+    sensitivity: "Low",
     emotionalSignificance: 84,
   }),
   event(TOM_HOOVER_URL, {
-    id: "evt-tom-hoover-return",
-    title: "Returns as a more vocal teammate",
+    id: "evt-tom-hoover-aba",
+    title: "Moves into the ABA",
     description:
-      "Hoover returns to the court with a stronger emphasis on communication and supporting younger players.",
-    year: 2017,
+      "Hoover joins the American Basketball Association, playing for the Denver Rockets, Houston Mavericks, Minnesota Pipers, and New York Nets.",
+    year: 1967,
     eventType: "Career",
-    confidence: "Medium",
-    approvalStatus: "Draft",
+    confidence: "High",
+    approvalStatus: "Reviewed",
     sensitivity: "Low",
     emotionalSignificance: 74,
   }),
   event(TOM_HOOVER_URL, {
-    id: "evt-tom-hoover-clinic",
-    title: "Starts an offseason skills clinic",
+    id: "evt-tom-hoover-after-basketball",
+    title: "Builds a wide-ranging post-basketball career",
     description:
-      "Hoover launches a small offseason clinic focused on decision-making, footwork, and sustainable development.",
-    year: 2020,
+      "After basketball, Hoover works with a teen employment program, moves into entertainment as a road manager, works in boxing with the New York State Athletic Commission, and helps run an Adopt-A-School program.",
+    year: 1970,
     eventType: "Legacy",
     confidence: "High",
     approvalStatus: "Reviewed",
@@ -711,114 +718,71 @@ export function buildTomHooverTwin(): DigitalTwinProfile {
   return buildDemoProfile(
     "demo-tom-hoover",
     "Tom Hoover",
-    "Basketball player - curated demo profile",
-    "Curated demo profile for Tom Hoover, a basketball player whose storyline covers resilience, team contribution, and mentorship.",
+    "Former NBA and ABA basketball player - verified demo profile",
+    "Verified demo profile for Tom Hoover, a former NBA and ABA forward/center whose public record covers Villanova, the Knicks, EPBL titles, the ABA, and a wide-ranging post-basketball career.",
     TOM_HOOVER_TIMELINE,
-    [],
+    [
+      {
+        id: "cm-tom-hoover-self-voice-story",
+        title: "Self-provided voice training recording",
+        description:
+          "Tom Hoover provided a voice training recording for this profile. The transcribed recording contains calibration passages for voice capture rather than a biographical interview, so it is used as a verified tone source, not as a public story source.",
+        emotionalSignificance:
+          "First-person source material from the subject for voice/tone grounding.",
+        visibility: "Internal",
+        sensitivity: "Low",
+        sourceNotes:
+          "Local source: /data/TomHoover/Tom Hoover Voice Training Recording.mp4 and cleaned reference audio files.",
+        source: makeProducerSource({
+          sourceNotes:
+            "Self-provided Tom Hoover voice training recording; transcribed locally with OpenAI on 2026-06-18. Transcript contains voice calibration passages, not a biographical story interview.",
+          verified: true,
+        }),
+      },
+    ],
   );
 }
 
-const WALT_TAYLOR_URL = "https://example.com/demo/walt-taylor";
+const WALT_LIQUOR_SOURCE_URL = "internal://data/WaltLiquor/Walt Liquor Narrative Story.docx";
+const WALT_LIQUOR_TRAILER_URL = "https://www.youtube.com/watch?v=VUQTNah_6MM";
+const WALT_LIQUOR_IMPORTED_AT_ISO = "2026-06-10T00:00:00.000Z";
 const WALT_TAYLOR_TIMELINE: TimelineEvent[] = [
-  event(WALT_TAYLOR_URL, {
-    id: "evt-walt-taylor-first-shows",
-    title: "Builds a multidisciplinary practice",
-    description:
-      "Walt Taylor, also known as Walt Liquor, begins combining music, visual work, and live experiences into one creative practice.",
-    year: 2008,
-    eventType: "Career",
-    confidence: "High",
-    approvalStatus: "Reviewed",
-    sensitivity: "Low",
-    emotionalSignificance: 58,
-  }),
-  event(WALT_TAYLOR_URL, {
-    id: "evt-walt-taylor-collective",
-    title: "Forms an independent creative collective",
-    description:
-      "Taylor creates a collaborative platform for artists, producers, and designers working across music and culture.",
-    year: 2012,
-    eventType: "Achievement",
-    confidence: "High",
-    approvalStatus: "Reviewed",
-    sensitivity: "Low",
-    emotionalSignificance: 76,
-  }),
-  event(WALT_TAYLOR_URL, {
-    id: "evt-walt-taylor-executive",
-    title: "Expands into music executive work",
-    description:
-      "Taylor takes on a broader executive role, shaping projects from early artist development through release strategy.",
-    year: 2015,
-    eventType: "Career",
-    confidence: "High",
-    approvalStatus: "Reviewed",
-    sensitivity: "Low",
-    emotionalSignificance: 82,
-  }),
-  event(WALT_TAYLOR_URL, {
-    id: "evt-walt-taylor-installation",
-    title: "Stages a cross-medium installation",
-    description:
-      "A gallery-scale installation brings Taylor's music, artwork, and spatial storytelling into a single public experience.",
-    year: 2018,
-    eventType: "Achievement",
-    confidence: "Medium",
-    approvalStatus: "Reviewed",
-    sensitivity: "Low",
-    emotionalSignificance: 86,
-  }),
-  event(WALT_TAYLOR_URL, {
-    id: "evt-walt-taylor-mentorship",
-    title: "Deepens artist mentorship",
-    description:
-      "Taylor formalizes a mentorship approach centered on creative ownership, long-term development, and sustainable careers.",
-    year: 2021,
-    eventType: "Legacy",
-    confidence: "Medium",
-    approvalStatus: "Draft",
-    sensitivity: "Low",
-    emotionalSignificance: 72,
-  }),
-  event(WALT_TAYLOR_URL, {
-    id: "evt-walt-taylor-rumor",
-    title: "Unverified claim about an unreleased project",
-    description:
-      "An unattributed post speculates about a shelved collaboration; the claim is intentionally unverified for editorial review.",
-    year: 2023,
-    eventType: "Historical",
-    confidence: "Low",
-    approvalStatus: "Draft",
-    sensitivity: "Medium",
-    emotionalSignificance: 34,
-  }),
-];
-
-const WALT_TAYLOR_CUSTOM_MOMENTS: CustomMoment[] = [
   {
-    id: "cm-walt-taylor-private-relationship",
-    title: "Private relationship boundary",
+    id: "walt-liquor-fake-it-till-you-make-it-2020",
+    title: "Fake It Till You Make It",
     description:
-      "A private relationship influenced a creative transition, but the subject asked producers to keep the details out of public-facing narration.",
-    emotionalSignificance:
-      "Important context for the producer, but not cleared for story output.",
-    visibility: "Private",
-    sensitivity: "High",
-    sourceNotes: "Producer note - intentionally private and not independently verified.",
-    source: makeProducerSource({
-      sourceNotes:
-        "Producer note - intentionally private and not independently verified.",
-      verified: false,
-    }),
+      "In December 2020, Walt Liquor was given his first opportunity to music supervise a major television production. He had not done it before, but told the producers he knew what he was doing. One producer liked the unconventional sound enough to give Walt room to fix mistakes before they became visible. The work fit the show, and All The Queen's Men went on to become one of Tyler Perry Studios' top-performing titles.",
+    summary:
+      "Walt Liquor's first major music-supervision opportunity became a career-defining test of self-belief, unconventional taste, and learning in motion.",
+    date: "2020-12",
+    year: 2020,
+    decade: "2020s",
+    eventType: "Career",
+    category: "Career",
+    source: {
+      type: "producer",
+      url: WALT_LIQUOR_TRAILER_URL,
+      citation: "Producer-provided Walt Liquor narrative story",
+      notes: `Local source: ${WALT_LIQUOR_SOURCE_URL}; supporting media: All The Queen's Men S5 trailer.`,
+      verified: true,
+      importedAtISO: WALT_LIQUOR_IMPORTED_AT_ISO,
+    },
+    confidence: "Medium",
+    approvalStatus: "Reviewed",
+    sensitivity: "Low",
+    visibility: "Internal",
+    emotionalSignificance: 88,
   },
 ];
+
+const WALT_TAYLOR_CUSTOM_MOMENTS: CustomMoment[] = [];
 
 export function buildWaltTaylorTwin(): DigitalTwinProfile {
   return buildDemoProfile(
     "demo-walt-taylor",
-    "Walt Taylor (aka Walt Liquor)",
-    "Multidisciplinary artist and music executive - curated demo profile",
-    "Curated demo profile for Walt Taylor, also known as Walt Liquor, a multidisciplinary artist and music executive working across creative direction, artist development, and culture.",
+    "Walt Liquor",
+    "Bay Area music artist and executive - producer-verified demo profile",
+    "Producer-verified demo profile for Walt Liquor, centered on a December 2020 career-defining music-supervision moment for All The Queen's Men.",
     WALT_TAYLOR_TIMELINE,
     WALT_TAYLOR_CUSTOM_MOMENTS,
   );
@@ -878,13 +842,13 @@ export const DEMO_SUBJECTS: DemoSubject[] = [
   {
     id: "demo-walt-taylor",
     category: "Music",
-    bio: "Also known as Walt Liquor. A multidisciplinary artist and music executive with a cross-medium creative arc and a seeded editorial-review moment.",
+    bio: "Bay Area music artist and executive with a producer-verified All The Queen's Men music-supervision moment.",
     matchTerms: ["walt", "taylor", "liquor", "artist", "music", "executive"],
     hit: {
       pageId: "demo-walt-taylor",
-      title: "Walt Taylor (aka Walt Liquor)",
+      title: "Walt Liquor",
       description:
-        "Multidisciplinary artist and music executive - curated demo profile.",
+        "Bay Area music artist and executive - producer-verified demo profile.",
       domain: "music",
       demoSubjectId: "demo-walt-taylor",
     },

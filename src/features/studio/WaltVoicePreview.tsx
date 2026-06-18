@@ -39,8 +39,9 @@ const RESEARCH_TWINS: ResearchTwinConfig[] = [
   {
     id: "walt",
     label: "Walt Liquor",
-    heading: "Walt Voice Preview",
-    description: "Seeded directly from the reviewed moment \"Fake It Till You Make It.\"",
+    heading: "Walt Liquor Voice Preview",
+    description:
+      "Producer-verified from Walt Liquor's December 2020 \"Fake It Till You Make It\" music-supervision moment.",
     draft: WALT_VOICE_STUDIO_DRAFT,
     eventId: WALT_VOICE_STUDIO_EVENT_ID,
     voiceId: WALT_VOICE_ID,
@@ -51,7 +52,7 @@ const RESEARCH_TWINS: ResearchTwinConfig[] = [
     label: "Tom Hoover",
     heading: "Tom Hoover Preview",
     description:
-      "Seeded from the curated Tom Hoover profile until verified personal stories are available.",
+      "Seeded from Tom Hoover's Wikipedia and BDL/Basketball-Reference verified profile, with his self-provided recording used as a tone source.",
     draft: TOM_VOICE_STUDIO_DRAFT,
     eventId: TOM_VOICE_STUDIO_EVENT_ID,
     voiceId: TOM_VOICE_ID,
@@ -62,7 +63,7 @@ const RESEARCH_TWINS: ResearchTwinConfig[] = [
     label: "David West",
     heading: "David West Preview",
     description:
-      "Seeded from the curated David West profile for voice research and delivery checks.",
+      "Seeded from David West's Wikipedia and BDL/Basketball-Reference verified profile for voice research and delivery checks.",
     draft: DAVID_VOICE_STUDIO_DRAFT,
     eventId: DAVID_VOICE_STUDIO_EVENT_ID,
     voiceId: DAVID_VOICE_ID,

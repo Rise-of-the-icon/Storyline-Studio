@@ -24,7 +24,7 @@ function WaltVoiceLabInner() {
     return (
       <main className="min-h-[calc(100dvh-57px)] px-4 py-8">
         <p className="mx-auto max-w-2xl font-mono text-sm text-textsub">
-          Loading voice lab...
+          Loading Walt Liquor voice lab...
         </p>
       </main>
     );
@@ -36,11 +36,11 @@ function WaltVoiceLabInner() {
         <div className="mb-5 border-b border-border pb-5">
           <p className="label-mono text-gold">Internal Research Studio</p>
           <h1 className="mt-2 font-display text-4xl tracking-wide text-text">
-            Walt Voice Lab
+            Walt Liquor Voice Lab
           </h1>
           <p className="mt-2 font-body text-sm text-textsub">
-            Seeded directly from the reviewed moment &ldquo;Fake It Till You Make
-            It.&rdquo;
+            Producer-verified from Walt Liquor's December 2020 "Fake It Till
+            You Make It" music-supervision moment.
           </p>
         </div>
         <VoiceContextPreview

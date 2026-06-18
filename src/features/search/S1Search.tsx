@@ -146,6 +146,25 @@ function dedupeProfilesByPerson(
   );
 }
 
+function refreshSeededDemoProfile(profile: DigitalTwinProfile): DigitalTwinProfile {
+  const subject = DEMO_SUBJECTS.find(
+    (item) => item.id === profile.wikipedia.pageId,
+  );
+  if (!subject) return profile;
+
+  const seed = subject.buildTwin();
+  return {
+    ...seed,
+    twinId: profile.twinId,
+    consentAcknowledged: profile.consentAcknowledged,
+    consentAcknowledgedAtISO: profile.consentAcknowledgedAtISO,
+    draftStatus: profile.draftStatus,
+    savedVoiceContexts: profile.savedVoiceContexts,
+    createdAtISO: profile.createdAtISO,
+    lastSavedAtISO: profile.lastSavedAtISO,
+  };
+}
+
 function BuiltProfilePreview({
   draft,
   onClose,
@@ -275,7 +294,7 @@ export function S1Search() {
   }, []);
 
   const refreshBuiltProfiles = useCallback(() => {
-    setSavedProfiles(listTwins());
+    setSavedProfiles(listTwins().map(refreshSeededDemoProfile));
   }, []);
 
   useEffect(() => {

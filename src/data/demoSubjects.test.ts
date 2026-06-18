@@ -75,64 +75,66 @@ describe("demo subject metadata", () => {
     expect(DEMO_SUBJECTS.map((subject) => subject.hit.title)).toEqual([
       "David West",
       "Tom Hoover",
-      "Walt Taylor (aka Walt Liquor)",
+      "Walt Liquor",
     ]);
   });
 });
 
-describe("investor-ready demo profile (Walt Taylor)", () => {
-  it("INVESTOR_DEMO_SUBJECT_ID is registered and resolves to the polished fixture", () => {
+describe("producer-verified demo profile (Walt Liquor)", () => {
+  it("INVESTOR_DEMO_SUBJECT_ID is registered and resolves to Walt Liquor", () => {
     expect(INVESTOR_DEMO_SUBJECT_ID).toBe("demo-walt-taylor");
     const subject = getDemoSubjectById(INVESTOR_DEMO_SUBJECT_ID);
     expect(subject).toBeDefined();
-    expect(subject?.hit.title).toBe("Walt Taylor (aka Walt Liquor)");
+    expect(subject?.hit.title).toBe("Walt Liquor");
   });
 
-  it("ships 6–8 timeline events covering the required category mix", () => {
+  it("ships the producer-verified Walt Liquor narrative moment", () => {
     const twin = buildWaltTaylorTwin();
-    expect(twin.timeline.length).toBeGreaterThanOrEqual(6);
-    expect(twin.timeline.length).toBeLessThanOrEqual(8);
+    expect(twin.coreIdentity.name).toBe("Walt Liquor");
+    expect(twin.timeline).toHaveLength(1);
 
-    const types = new Set(twin.timeline.map((e) => e.eventType));
-    expect(types.has("Career")).toBe(true);
-    expect(types.has("Achievement")).toBe(true);
-    expect(types.has("Legacy")).toBe(true);
+    const event = twin.timeline[0];
+    expect(event?.id).toBe("walt-liquor-fake-it-till-you-make-it-2020");
+    expect(event?.title).toBe("Fake It Till You Make It");
+    expect(event?.eventType).toBe("Career");
+    expect(event?.approvalStatus).toBe("Reviewed");
+    expect(event?.source.type).toBe("producer");
+    expect(event?.source.verified).toBe(true);
+    expect(event?.source.url).toContain("youtube.com");
+    expect(event?.source.notes).toContain("Walt Liquor Narrative Story.docx");
   });
 
-  it("ships a Private high-sensitivity editorial-review moment", () => {
+  it("does not ship fabricated private or rumor moments", () => {
     const twin = buildWaltTaylorTwin();
-    expect(twin.customMoments).toHaveLength(1);
-    const privateMoment = twin.customMoments[0];
-    expect(privateMoment?.visibility).toBe("Private");
-    expect(privateMoment?.sensitivity).toBe("High");
+    expect(twin.customMoments).toHaveLength(0);
+    expect(twin.timeline.some((event) => event.confidence === "Low")).toBe(false);
   });
 
-  it("seeds at least one guardrail flag in NeedsReview status for the S5 demo", () => {
+  it("does not manufacture guardrail flags for Walt", () => {
     const twin = buildWaltTaylorTwin();
     const pending = twin.guardrailReviews.filter(
       (r) => r.status === "NeedsReview",
     );
-    expect(pending.length).toBeGreaterThan(0);
+    expect(pending).toHaveLength(0);
   });
 
-  it("has a mixed-confidence timeline (High + Medium + Low) so the resolver visibly varies", () => {
+  it("keeps the Walt source as producer-backed medium confidence", () => {
     const twin = buildWaltTaylorTwin();
     const confidences = new Set(twin.timeline.map((e) => e.confidence));
-    expect(confidences.has("High")).toBe(true);
     expect(confidences.has("Medium")).toBe(true);
-    expect(confidences.has("Low")).toBe(true);
+    expect(confidences.has("Low")).toBe(false);
   });
 
-  it("seeds review statuses across Reviewed and Draft so S3 has meaningful work", () => {
+  it("has an approved anchoring event for Voice Studio", () => {
     const twin = buildWaltTaylorTwin();
     const statuses = new Set(twin.timeline.map((e) => e.approvalStatus));
     expect(statuses.has("Reviewed")).toBe(true);
-    expect(statuses.has("Draft")).toBe(true);
+    expect(statuses.has("Draft")).toBe(false);
 
     const reviewedCount = twin.timeline.filter(
       (e) => e.approvalStatus === "Reviewed",
     ).length;
-    expect(reviewedCount).toBeGreaterThanOrEqual(1);
+    expect(reviewedCount).toBe(1);
   });
 
   it("voice profile defaults make sense for an Intimate documentary tone", () => {

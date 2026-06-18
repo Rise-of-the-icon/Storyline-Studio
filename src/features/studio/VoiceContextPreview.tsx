@@ -95,8 +95,7 @@ const RESEARCH_EMOTION_OPTIONS: ResearchEmotionFamily[] = [
   "Non-Verbal",
 ];
 const EMPTY_SCRIPT_OPTIONS: VoiceScriptOption[] = [];
-const VOICE_CLIP_CACHE_STORAGE_KEY = "ricon:voice-preview:clips:v1";
-const VOICE_CLIP_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const VOICE_CLIP_CACHE_STORAGE_KEY = "ricon:voice-preview:clips:v3";
 const VOICE_CLIP_CACHE_LIMIT = 180;
 
 const EMOTION_BUTTON_COPY: Record<
@@ -129,18 +128,24 @@ function audioUrlFromBase64(audioBase64: string): string {
   return URL.createObjectURL(blob);
 }
 
+function normalizeCachePart(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeTranscriptForCache(text: string): string {
+  return text.trim().replace(/\s+/g, " ");
+}
+
 function voiceClipCacheKey(args: {
-  twinId: string;
-  eventId: string;
+  subjectName: string;
   text: string;
   emotionFamily: ResearchEmotionFamily;
   voiceId: string;
   modelId: string;
 }): string {
   return JSON.stringify({
-    twinId: args.twinId.trim(),
-    eventId: args.eventId.trim(),
-    text: args.text.trim(),
+    subjectName: normalizeCachePart(args.subjectName),
+    transcript: normalizeTranscriptForCache(args.text),
     emotionFamily: args.emotionFamily,
     voiceId: args.voiceId.trim(),
     modelId: args.modelId.trim(),
@@ -152,12 +157,9 @@ function readPersistentVoiceClipCache(): Map<string, CachedVoiceClip> {
     const raw = window.localStorage.getItem(VOICE_CLIP_CACHE_STORAGE_KEY);
     if (!raw) return new Map();
     const parsed = JSON.parse(raw) as Record<string, CachedVoiceClip>;
-    const now = Date.now();
     const entries = Object.entries(parsed).filter(([, clip]) => {
       if (!clip || typeof clip.audioBase64 !== "string") return false;
-      if (!clip.expiresAtISO) return true;
-      const expiresAt = Date.parse(clip.expiresAtISO);
-      return Number.isFinite(expiresAt) && expiresAt > now;
+      return true;
     });
     entries.sort(
       (a, b) => Date.parse(b[1].generatedAtISO) - Date.parse(a[1].generatedAtISO),
@@ -170,12 +172,9 @@ function readPersistentVoiceClipCache(): Map<string, CachedVoiceClip> {
 
 function persistVoiceClipCache(cache: Map<string, CachedVoiceClip>): void {
   try {
-    const now = Date.now();
     const entries = [...cache.entries()]
       .filter(([, clip]) => {
-        if (!clip.expiresAtISO) return true;
-        const expiresAt = Date.parse(clip.expiresAtISO);
-        return Number.isFinite(expiresAt) && expiresAt > now;
+        return Boolean(clip?.audioBase64);
       })
       .sort(
         (a, b) => Date.parse(b[1].generatedAtISO) - Date.parse(a[1].generatedAtISO),
@@ -235,7 +234,7 @@ function buildSynthesisScript(args: {
     event.id === "walt-liquor-fake-it-till-you-make-it-2020"
       ? "In December 2020, I got my first chance to music supervise a major television production. I had not done it before, but I told the producers I knew what I was doing. One producer believed in the unconventional sound enough to give me room to fix mistakes before they became visible. The work fit the show, and All The Queen's Men became proof that my instincts could open a real door."
       : event.id === "evt-tom-hoover-pro"
-        ? "I earned professional minutes by staying prepared, communicating, and making efficient plays inside the rotation. I learned that trust does not arrive all at once. It is built through the details, through the next possession, and through the way I help steady the people around me."
+        ? "I began my NBA career with the New York Knicks, played forward and center, and learned quickly that the professional game asks you to earn every minute. The verified record is not a myth: New York, St. Louis, then the ABA stops in Denver, Houston, Minnesota, and with the New York Nets."
       : (event.summary || event.description).trim();
   const feeling = resolver.signatureState.toLowerCase();
 
@@ -375,15 +374,6 @@ export function VoiceContextPreview({
   const resolveCachedClip = (cacheKey: string): CachedVoiceClip | null => {
     const cachedClip = voiceClipCacheRef.current.get(cacheKey);
     if (!cachedClip) return null;
-    if (
-      cachedClip.expiresAtISO &&
-      Number.isFinite(Date.parse(cachedClip.expiresAtISO)) &&
-      Date.parse(cachedClip.expiresAtISO) <= Date.now()
-    ) {
-      voiceClipCacheRef.current.delete(cacheKey);
-      persistVoiceClipCache(voiceClipCacheRef.current);
-      return null;
-    }
     return cachedClip;
   };
 
@@ -412,56 +402,31 @@ export function VoiceContextPreview({
       meta: Record<string, unknown>;
     };
 
-    if (researchResponse.ok) {
-      payload = (await researchResponse.json()) as {
-        audio_base64: string;
-        meta: Record<string, unknown>;
-      };
-    } else {
-      // Some production deployments expose only the legacy narrator endpoint.
-      const fallbackResponse = await fetch(`${API_BASE.replace(/\/$/, "")}/twin/speak`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!fallbackResponse.ok) {
-        const body = await researchResponse.json().catch(() => null);
-        throw new Error(
-          body?.detail ??
-            `Voice synthesis failed (${researchResponse.status}/${fallbackResponse.status})`,
-        );
-      }
-      const fallbackPayload = (await fallbackResponse.json()) as {
-        audio_base64: string;
-      };
-      payload = {
-        audio_base64: fallbackPayload.audio_base64,
-        meta: {
-          mode: "fallback",
-          endpoint: "/twin/speak",
-          model: resolvedModelId,
-          emotion_family: family,
-          voice_id: trimmedVoiceId,
-          cached: false,
-        },
-      };
+    if (!researchResponse.ok) {
+      const body = await researchResponse.json().catch(() => null);
+      throw new Error(
+        body?.detail ??
+          `Research voice synthesis failed (${researchResponse.status}).`,
+      );
     }
+
+    payload = (await researchResponse.json()) as {
+      audio_base64: string;
+      meta: Record<string, unknown>;
+    };
 
     if (!payload.audio_base64) {
       throw new Error("Voice synthesis returned empty audio.");
     }
 
     const generatedAtISO = new Date().toISOString();
-    const expiresAtISO = new Date(Date.now() + VOICE_CLIP_CACHE_TTL_MS).toISOString();
     const clip: CachedVoiceClip = {
       audioBase64: payload.audio_base64,
       meta: payload.meta,
       generatedAtISO,
-      expiresAtISO,
     };
     const cacheKey = voiceClipCacheKey({
-      twinId: draft.twinId,
-      eventId: event.id,
+      subjectName: draft.coreIdentity.name,
       text,
       emotionFamily: family,
       voiceId: trimmedVoiceId,
@@ -487,8 +452,7 @@ export function VoiceContextPreview({
     }
 
     const cacheKey = voiceClipCacheKey({
-      twinId: draft.twinId,
-      eventId: event.id,
+      subjectName: draft.coreIdentity.name,
       text,
       emotionFamily: family,
       voiceId: trimmedVoiceId,
@@ -557,8 +521,7 @@ export function VoiceContextPreview({
       families.map(async (family) => {
         if (runId !== prewarmRunRef.current) return;
         const cacheKey = voiceClipCacheKey({
-          twinId: draft.twinId,
-          eventId: event.id,
+          subjectName: draft.coreIdentity.name,
           text,
           emotionFamily: family,
           voiceId: trimmedVoiceId,
@@ -597,10 +560,9 @@ export function VoiceContextPreview({
     if (!trimmedVoiceId) return;
     const resolvedModelId = modelId.trim() || "inworld-tts-2";
     const prewarmKey = [
-      draft.twinId,
-      event.id,
+      normalizeCachePart(draft.coreIdentity.name),
       selectedScriptOption?.id ?? "default-script",
-      synthesisScript,
+      normalizeTranscriptForCache(synthesisScript),
       trimmedVoiceId,
       resolvedModelId,
     ].join("::");
@@ -611,9 +573,8 @@ export function VoiceContextPreview({
       await prewarmRemainingEmotionClips(synthesisScript);
     })();
   }, [
-    draft.twinId,
+    draft.coreIdentity.name,
     emotionFamily,
-    event.id,
     modelId,
     selectedScriptOption?.id,
     synthesisScript,
@@ -657,8 +618,8 @@ export function VoiceContextPreview({
               Inworld synthesis
             </p>
             <p className="mt-2 font-body text-sm text-textsub">
-              Uses Walt's cloned voice by default. Change the voice ID only when
-              testing another approved clone.
+              Uses this twin's approved Inworld voice ID. If synthesis fails,
+              no other clone is substituted.
             </p>
           </div>
           <Badge variant={synthesisStatus === "ready" ? "ok" : "muted"}>

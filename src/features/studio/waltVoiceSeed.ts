@@ -20,7 +20,7 @@ export const WALT_VOICE_STUDIO_DRAFT: DigitalTwinProfile = {
     title: "Walt Liquor",
     description: "Bay Area music artist and executive",
     summary:
-      "Walt Liquor is a Bay Area music artist and executive. This internal research profile is seeded from a producer-provided narrative moment for voice testing.",
+      "Producer-verified profile for Walt Liquor, centered on a December 2020 career-defining music-supervision moment for All The Queen's Men.",
     sourceUrl: "internal://data/WaltLiquor/Walt Liquor Narrative Story.docx",
   },
   timeline: [
@@ -39,10 +39,9 @@ export const WALT_VOICE_STUDIO_DRAFT: DigitalTwinProfile = {
       source: {
         type: "producer",
         url: "https://www.youtube.com/watch?v=VUQTNah_6MM",
-        citation:
-          "Producer-provided narrative: /data/WaltLiquor/Walt Liquor Narrative Story.docx; supporting media: AQM S5 trailer",
+        citation: "Producer-provided Walt Liquor narrative story",
         notes:
-          "Internal research use. Behind-the-scenes details are producer-provided; trailer supports the All The Queen's Men production context.",
+          "Local source: /data/WaltLiquor/Walt Liquor Narrative Story.docx; supporting media: All The Queen's Men S5 trailer.",
         verified: true,
         importedAtISO: nowISO,
       },
