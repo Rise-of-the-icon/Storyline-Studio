@@ -50,6 +50,8 @@ export interface TwinContextValue {
   goHome: () => void;
   rejectToCustomMoments: () => void;
   setDraft: (draft: DigitalTwinProfile | null) => void;
+  /** In-memory draft for research/demo routes; does not persist. */
+  setTransientDraft: (draft: DigitalTwinProfile) => void;
   updateDraft: (updater: (prev: DigitalTwinProfile) => DigitalTwinProfile) => void;
   persistDraft: () => void;
   /**
@@ -118,6 +120,10 @@ export function TwinProvider({ children }: { children: ReactNode }) {
       // updateDraft attempt will retry.
       setDraftState(next);
     }
+  }, []);
+
+  const setTransientDraft = useCallback((next: DigitalTwinProfile) => {
+    setDraftState(next);
   }, []);
 
   /**
@@ -229,6 +235,7 @@ export function TwinProvider({ children }: { children: ReactNode }) {
       goHome,
       rejectToCustomMoments,
       setDraft,
+      setTransientDraft,
       updateDraft,
       persistDraft,
       clearDraft,
@@ -249,6 +256,7 @@ export function TwinProvider({ children }: { children: ReactNode }) {
       goHome,
       rejectToCustomMoments,
       setDraft,
+      setTransientDraft,
       updateDraft,
       persistDraft,
       clearDraft,

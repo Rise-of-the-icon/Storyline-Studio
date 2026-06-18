@@ -142,6 +142,9 @@ function CoreTwinSeedRoute() {
 
 function AppRoutes() {
   const { screen } = useTwin();
+  const seedCoreTwins = new URLSearchParams(window.location.search).has(
+    "seedCoreTwins",
+  );
   const showWaltVoiceLab = new URLSearchParams(window.location.search).has(
     "waltVoiceLab",
   );
@@ -220,6 +223,3 @@ export default function App() {
     </TwinProvider>
   );
 }
-  const seedCoreTwins = new URLSearchParams(window.location.search).has(
-    "seedCoreTwins",
-  );
