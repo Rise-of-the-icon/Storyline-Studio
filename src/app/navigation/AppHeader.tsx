@@ -21,7 +21,7 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
  * complement to the in-app confirm dialog.
  */
 export function AppHeader() {
-  const { screen, draft, goHome } = useTwin();
+  const { screen, draft, completedThroughStep, goHome } = useTwin();
   const meta = SCREEN_META[screen];
   const subjectName = draft?.coreIdentity.name ?? null;
   const isDemo = draft ? isDemoTwin(draft) : false;
@@ -63,9 +63,13 @@ export function AppHeader() {
   // Step indicator copy — different for S7 because the studio has its own
   // sub-steps (SS1–SS4) shown below in the StudioBreadcrumb.
   const stepCount = 7;
+  const title =
+    screen === "S6" && completedThroughStep >= 7
+      ? "Profile Built"
+      : meta.title;
   const stepCopy = screen === "S7"
       ? `Step ${meta.step} of ${stepCount} · ${meta.stepLabel}`
-      : `Step ${meta.step} of ${stepCount} · ${meta.title}`;
+      : `Step ${meta.step} of ${stepCount} · ${title}`;
 
   return (
     <>

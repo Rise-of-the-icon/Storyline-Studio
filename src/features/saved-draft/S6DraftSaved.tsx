@@ -24,37 +24,60 @@ type S6Phase = "saving" | "saved" | "error";
 
 const SAVE_DELAY_MS = 800;
 
+function finalizeProfileForStoryline(
+  draft: DigitalTwinProfile,
+): DigitalTwinProfile {
+  const nowISO = new Date().toISOString();
+  return {
+    ...draft,
+    consentAcknowledged: true,
+    consentAcknowledgedAtISO: draft.consentAcknowledgedAtISO ?? nowISO,
+    draftStatus: "saved",
+    timeline: draft.timeline.map((event) => ({
+      ...event,
+      approvalStatus: "Reviewed",
+      visibility: event.visibility === "Private" ? "Private" : "Public",
+    })),
+    customMoments: draft.customMoments.map((moment) => ({
+      ...moment,
+      visibility: moment.visibility === "Private" ? "Private" : "Public",
+    })),
+  };
+}
+
 async function commitTwin(
   draft: DigitalTwinProfile,
+  options: { finalizeForStoryline?: boolean } = {},
 ): Promise<DigitalTwinProfile | null> {
   if (!canPersistDraft(draft)) {
     return null;
   }
   await new Promise((r) => setTimeout(r, SAVE_DELAY_MS));
-  const saved = saveTwin({
-    ...draft,
-    draftStatus: "saved",
-  });
+  const publishableDraft = options.finalizeForStoryline
+    ? finalizeProfileForStoryline(draft)
+    : { ...draft, draftStatus: "saved" as const };
+  const saved = saveTwin(publishableDraft);
   if (!saved) return null;
   persistDraftId(saved.twinId);
   return saved;
 }
 
 export function S6DraftSaved() {
-  const { draft, setDraft, goTo } = useTwin();
+  const { draft, setDraft, goTo, completedThroughStep } = useTwin();
   const [phase, setPhase] = useState<S6Phase>("saving");
+  const finalizeForStoryline = completedThroughStep >= 7;
 
   const runCommit = async () => {
     if (!draft) {
       goTo("S1");
       return;
     }
-    if (draft.draftStatus === "saved") {
+    if (draft.draftStatus === "saved" && !finalizeForStoryline) {
       setPhase("saved");
       return;
     }
     setPhase("saving");
-    const saved = await commitTwin(draft);
+    const saved = await commitTwin(draft, { finalizeForStoryline });
     if (!saved) {
       setPhase("error");
       return;
@@ -67,7 +90,7 @@ export function S6DraftSaved() {
     void runCommit();
     // Commit once per visit when draft is not yet persisted as saved.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft?.twinId]);
+  }, [draft?.twinId, finalizeForStoryline]);
 
   if (!draft && phase !== "saving") {
     return (
@@ -158,10 +181,12 @@ export function S6DraftSaved() {
           ✓
         </div>
         <h1 className="mt-4 font-display text-3xl tracking-wide text-text">
-          Draft saved
+          {finalizeForStoryline ? "Profile built" : "Draft saved"}
         </h1>
         <p className="mt-2 font-body text-sm text-textsub">
-          Your digital twin is ready for the Voice Studio.
+          {finalizeForStoryline
+            ? "Your digital twin profile data is saved and ready for Storyline."
+            : "Your digital twin is ready for the Voice Studio."}
         </p>
       </div>
 
@@ -246,7 +271,9 @@ export function S6DraftSaved() {
               </div>
             )}
             <div className="flex gap-2 sm:col-span-2">
-              <dt className="text-textmuted">Last saved</dt>
+              <dt className="text-textmuted">
+                {finalizeForStoryline ? "Built" : "Last saved"}
+              </dt>
               <dd>
                 <time dateTime={summary.lastSavedAtISO}>
                   {summary.lastSavedLabel}
@@ -259,7 +286,7 @@ export function S6DraftSaved() {
 
       <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Button variant="primary" onClick={() => goTo("S7")}>
-          Open Voice Studio
+          {finalizeForStoryline ? "Back to Voice Studio" : "Open Voice Studio"}
         </Button>
         <Button variant="secondary" onClick={() => goTo("S3")}>
           Back to timeline
