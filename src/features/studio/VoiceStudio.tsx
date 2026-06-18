@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { WizardActionBar } from "@/app/navigation/WizardActionBar";
-import { Badge } from "@/shared/ui/Badge";
-import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { ResponsivePanel } from "@/shared/ui/ResponsivePanel";
 import { StepTransition } from "@/shared/ui/StepTransition";
@@ -10,7 +8,6 @@ import { useTwin } from "@/app/providers/TwinContext";
 import type { ResolverOutput } from "@/types/resolver";
 import type { DigitalTwinProfile, TimelineEvent } from "@/types/twin";
 import type { StudioStepId } from "@/types/navigation";
-import { getDraftSummary } from "@/features/saved-draft/draftSummary";
 import { HowItWorksPanel } from "./HowItWorksPanel";
 import { ResolverPanel } from "./ResolverPanel";
 import { StudioBreadcrumb } from "./StudioBreadcrumb";
@@ -107,104 +104,18 @@ function finalizeProfileForStoryline(args: {
   };
 }
 
-function BuiltProfileComplete({
-  draft,
-  onBackToStudio,
-  onBackToTimeline,
-}: {
-  draft: DigitalTwinProfile;
-  onBackToStudio: () => void;
-  onBackToTimeline: () => void;
-}) {
-  const summary = getDraftSummary(draft);
-
-  return (
-    <main className="min-h-[calc(100dvh-57px)] px-4 py-12">
-      <div className="mx-auto max-w-2xl text-center">
-        <div
-          className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-ok bg-okfaint font-display text-2xl text-ok"
-          aria-hidden="true"
-        >
-          ✓
-        </div>
-        <p className="mt-5 label-mono text-ok">Step 7 complete</p>
-        <h1 className="mt-3 font-display text-3xl tracking-wide text-text">
-          Profile built
-        </h1>
-        <p className="mt-2 font-body text-sm text-textsub">
-          The profile data, public timeline, and voice context are saved for Storyline.
-        </p>
-
-        <Card className="mt-8 p-5 text-left">
-          <Card.Header
-            actions={
-              <>
-                <Badge variant="ok">Built profile</Badge>
-                {summary.savedVoiceContextCount > 0 && (
-                  <Badge variant="gold">
-                    {summary.savedVoiceContextCount} voice context
-                    {summary.savedVoiceContextCount === 1 ? "" : "s"}
-                  </Badge>
-                )}
-              </>
-            }
-          >
-            <Card.Title className="text-xl">{summary.subjectName}</Card.Title>
-          </Card.Header>
-          <dl className="mt-4 grid gap-x-4 gap-y-2 font-mono text-xs text-textsub sm:grid-cols-2">
-            <div className="flex gap-2">
-              <dt className="text-textmuted">Timeline</dt>
-              <dd>{summary.eventCount} events</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="text-textmuted">Approved</dt>
-              <dd>{summary.approvedEventCount}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="text-textmuted">Custom</dt>
-              <dd>{summary.customMomentCount}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="text-textmuted">Status</dt>
-              <dd>{summary.draftStatus}</dd>
-            </div>
-            <div className="flex gap-2 sm:col-span-2">
-              <dt className="text-textmuted">Built</dt>
-              <dd>
-                <time dateTime={summary.lastSavedAtISO}>
-                  {summary.lastSavedLabel}
-                </time>
-              </dd>
-            </div>
-          </dl>
-        </Card>
-
-        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Button variant="primary" onClick={onBackToStudio}>
-            Review in Voice Studio
-          </Button>
-          <Button variant="secondary" onClick={onBackToTimeline}>
-            Back to timeline
-          </Button>
-        </div>
-      </div>
-    </main>
-  );
-}
-
 function VoiceStudioInner() {
   const {
     draft,
     studioStep,
     goBack,
-    goTo,
+    goHome,
     setDraft,
     advanceStudioStep,
     backStudioStep,
     setStudioStep,
   } = useTwin();
   const { selectedEventId, scene, resolverOutput } = useStudio();
-  const [buildComplete, setBuildComplete] = useState(false);
   const previousStudioStep = useRef(studioStep);
   const previousStudioStepIndex = STUDIO_STEP_ORDER.indexOf(
     previousStudioStep.current,
@@ -223,16 +134,6 @@ function VoiceStudioInner() {
 
   if (!draft) return null;
 
-  if (buildComplete) {
-    return (
-      <BuiltProfileComplete
-        draft={draft}
-        onBackToStudio={() => setBuildComplete(false)}
-        onBackToTimeline={() => goTo("S3")}
-      />
-    );
-  }
-
   const selectedEvent = draft.timeline.find((event) => event.id === selectedEventId);
 
   const handlePrimaryAction = () => {
@@ -245,7 +146,7 @@ function VoiceStudioInner() {
         scene,
       });
       setDraft(finalized);
-      setBuildComplete(true);
+      goHome();
       return;
     }
     advanceStudioStep();
