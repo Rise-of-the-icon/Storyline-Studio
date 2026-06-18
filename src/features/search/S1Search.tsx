@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -85,10 +86,22 @@ function domainBadgeVariant(
 }
 
 function isBuiltProfile(draft: DigitalTwinProfile | null): boolean {
+  if (!draft) return false;
+  const reviewableEvents = draft.timeline.filter(
+    (event) => event.visibility !== "Private",
+  );
+  const allReviewableEventsReady =
+    reviewableEvents.length > 0 &&
+    reviewableEvents.every(
+      (event) =>
+        event.visibility === "Public" && event.approvalStatus === "Reviewed",
+    );
+
   return Boolean(
-    draft &&
-      draft.draftStatus === "saved" &&
-      (draft.savedVoiceContexts?.length ?? 0) > 0,
+    draft.draftStatus === "saved" &&
+      draft.consentAcknowledged &&
+      (draft.savedVoiceContexts?.length ?? 0) > 0 &&
+      allReviewableEventsReady,
   );
 }
 
@@ -136,9 +149,11 @@ function dedupeProfilesByPerson(
 function BuiltProfilePreview({
   draft,
   onClose,
+  onEdit,
 }: {
   draft: DigitalTwinProfile;
   onClose: () => void;
+  onEdit: () => void;
 }) {
   const summary = getDraftSummary(draft);
   const publicEvents = draft.timeline.filter(
@@ -165,9 +180,14 @@ function BuiltProfilePreview({
             {draft.wikipedia.description || draft.wikipedia.summary}
           </p>
         </div>
-        <Button variant="ghost" size="small" onClick={onClose}>
-          Close
-        </Button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button variant="secondary" size="small" onClick={onEdit}>
+            Edit profile
+          </Button>
+          <Button variant="ghost" size="small" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       </div>
 
       <dl className="mt-5 grid gap-x-5 gap-y-2 font-mono text-xs text-textsub sm:grid-cols-2">
@@ -278,9 +298,11 @@ export function S1Search() {
     () =>
       dedupedProfiles.filter(
         (profile) =>
-          !isBuiltProfile(profile) && profile.twinId !== activeDraft?.twinId,
+          !isBuiltProfile(profile) &&
+          profileIdentityKey(profile) !==
+            (activeDraft ? profileIdentityKey(activeDraft) : null),
       ),
-    [activeDraft?.twinId, dedupedProfiles],
+    [activeDraft, dedupedProfiles],
   );
 
   const savedProfileByPageId = useMemo(() => {
@@ -531,6 +553,14 @@ export function S1Search() {
     performDemoLoad(demoId);
   }, [goTo, performDemoLoad, savedProfileByPageId, setDraft]);
 
+  const editProfile = useCallback(
+    (profile: DigitalTwinProfile) => {
+      setDraft(profile);
+      goTo("S2");
+    },
+    [goTo, setDraft],
+  );
+
   return (
     <div className="mx-auto max-w-[680px] px-4 py-10">
       <div className="cinematic-enter">
@@ -548,13 +578,6 @@ export function S1Search() {
 
       <ResumeDraftPanel hidden={activeDraftHasBuiltProfile} />
 
-      {viewingBuiltProfile && (
-        <BuiltProfilePreview
-          draft={viewingBuiltProfile}
-          onClose={() => setViewingBuiltProfile(null)}
-        />
-      )}
-
       {builtProfiles.length > 0 && (
         <section className="mt-6" aria-labelledby="built-profiles-title">
           <p
@@ -567,37 +590,60 @@ export function S1Search() {
             {builtProfiles.map((profile) => {
               const summary = getDraftSummary(profile);
               return (
-                <Card
-                  key={profile.twinId}
-                  as="button"
-                  type="button"
-                  selectable
-                  onClick={() => setViewingBuiltProfile(profile)}
-                  aria-label={`View built profile for ${summary.subjectName}`}
-                  className="group flex w-full flex-col gap-3 border-l-2 border-l-ok bg-card/70 sm:flex-row sm:items-center sm:justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-ok"
-                >
-                  <Card.Header
-                    eyebrow="Built profile"
-                    actions={<Badge variant="ok">Ready</Badge>}
+                <Fragment key={profile.twinId}>
+                  <Card
+                    as="article"
+                    className="flex w-full flex-col gap-3 border-l-2 border-l-ok bg-card/70 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <p className="mt-1 font-body text-sm text-text">
-                      <span className="font-medium">{summary.subjectName}</span>
-                      <span className="text-textsub">
-                        {" "}
-                        — {summary.approvedEventCount} approved event
-                        {summary.approvedEventCount === 1 ? "" : "s"} ·{" "}
-                        {summary.savedVoiceContextCount} voice context
-                        {summary.savedVoiceContextCount === 1 ? "" : "s"}
-                      </span>
-                    </p>
-                  </Card.Header>
-                  <span
-                    aria-hidden="true"
-                    className="inline-flex min-h-[36px] shrink-0 items-center justify-center self-start rounded-md border border-ok bg-ok px-3 py-1.5 font-body text-xs font-medium text-bg sm:self-auto"
-                  >
-                    View built profile
-                  </span>
-                </Card>
+                    <Card.Header
+                      eyebrow="Built profile"
+                      actions={<Badge variant="ok">Ready</Badge>}
+                    >
+                      <p className="mt-1 font-body text-sm text-text">
+                        <span className="font-medium">{summary.subjectName}</span>
+                        <span className="text-textsub">
+                          {" "}
+                          — {summary.approvedEventCount} approved event
+                          {summary.approvedEventCount === 1 ? "" : "s"} ·{" "}
+                          {summary.savedVoiceContextCount} voice context
+                          {summary.savedVoiceContextCount === 1 ? "" : "s"}
+                        </span>
+                      </p>
+                    </Card.Header>
+                    <div className="flex shrink-0 flex-wrap gap-2 self-start sm:self-auto">
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        onClick={() => editProfile(profile)}
+                        aria-label={`Edit built profile for ${summary.subjectName}`}
+                      >
+                        Edit profile
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="small"
+                        onClick={() =>
+                          setViewingBuiltProfile((current) =>
+                            current?.twinId === profile.twinId ? null : profile,
+                          )
+                        }
+                        aria-expanded={viewingBuiltProfile?.twinId === profile.twinId}
+                        aria-label={`View built profile for ${summary.subjectName}`}
+                      >
+                        {viewingBuiltProfile?.twinId === profile.twinId
+                          ? "Hide profile"
+                          : "View built profile"}
+                      </Button>
+                    </div>
+                  </Card>
+                  {viewingBuiltProfile?.twinId === profile.twinId && (
+                    <BuiltProfilePreview
+                      draft={profile}
+                      onEdit={() => editProfile(profile)}
+                      onClose={() => setViewingBuiltProfile(null)}
+                    />
+                  )}
+                </Fragment>
               );
             })}
           </div>

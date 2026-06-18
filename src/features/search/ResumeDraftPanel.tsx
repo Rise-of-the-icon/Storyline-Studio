@@ -4,6 +4,26 @@ import { getDraftSummary } from "@/features/saved-draft/draftSummary";
 import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
+import type { DigitalTwinProfile } from "@/types/twin";
+
+function isBuiltProfile(draft: DigitalTwinProfile): boolean {
+  const reviewableEvents = draft.timeline.filter(
+    (event) => event.visibility !== "Private",
+  );
+  const allReviewableEventsReady =
+    reviewableEvents.length > 0 &&
+    reviewableEvents.every(
+      (event) =>
+        event.visibility === "Public" && event.approvalStatus === "Reviewed",
+    );
+
+  return Boolean(
+    draft.draftStatus === "saved" &&
+      draft.consentAcknowledged &&
+      (draft.savedVoiceContexts?.length ?? 0) > 0 &&
+      allReviewableEventsReady,
+  );
+}
 
 /**
  * Surface that appears on S1 when a draft exists in `localStorage`. Two
@@ -23,12 +43,7 @@ export function ResumeDraftPanel({ hidden = false }: { hidden?: boolean }) {
 
   if (hidden) return null;
   if (!draft) return null;
-  if (
-    draft.draftStatus === "saved" &&
-    (draft.savedVoiceContexts?.length ?? 0) > 0
-  ) {
-    return null;
-  }
+  if (isBuiltProfile(draft)) return null;
 
   const summary = getDraftSummary(draft);
 
