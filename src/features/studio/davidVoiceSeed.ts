@@ -3,8 +3,7 @@ import type { VoiceScriptOption } from "./VoiceContextPreview";
 
 export const DAVID_VOICE_ID =
   import.meta.env.VITE_DAVID_VOICE_ID ||
-  import.meta.env.VITE_WALT_VOICE_ID ||
-  "default--z5zasdfwci5ofrt-gmsjw__walt";
+  "default--z5zasdfwci5ofrt-gmsjw__test";
 export const DAVID_VOICE_STUDIO_EVENT_ID = "evt-david-west-all-star";
 
 export const DAVID_VOICE_STUDIO_DRAFT = {
