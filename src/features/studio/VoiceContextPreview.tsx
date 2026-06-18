@@ -393,7 +393,7 @@ export function VoiceContextPreview({
     trimmedVoiceId: string,
     resolvedModelId: string,
   ): Promise<CachedVoiceClip> => {
-    const response = await fetch(
+    const researchResponse = await fetch(
       `${API_BASE.replace(/\/$/, "")}/api/research/voice/speak`,
       {
         method: "POST",
@@ -406,14 +406,51 @@ export function VoiceContextPreview({
         }),
       },
     );
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      throw new Error(body?.detail ?? `Voice synthesis failed (${response.status})`);
-    }
-    const payload = (await response.json()) as {
+
+    let payload: {
       audio_base64: string;
       meta: Record<string, unknown>;
     };
+
+    if (researchResponse.ok) {
+      payload = (await researchResponse.json()) as {
+        audio_base64: string;
+        meta: Record<string, unknown>;
+      };
+    } else {
+      // Some production deployments expose only the legacy narrator endpoint.
+      const fallbackResponse = await fetch(`${API_BASE.replace(/\/$/, "")}/twin/speak`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!fallbackResponse.ok) {
+        const body = await researchResponse.json().catch(() => null);
+        throw new Error(
+          body?.detail ??
+            `Voice synthesis failed (${researchResponse.status}/${fallbackResponse.status})`,
+        );
+      }
+      const fallbackPayload = (await fallbackResponse.json()) as {
+        audio_base64: string;
+      };
+      payload = {
+        audio_base64: fallbackPayload.audio_base64,
+        meta: {
+          mode: "fallback",
+          endpoint: "/twin/speak",
+          model: resolvedModelId,
+          emotion_family: family,
+          voice_id: trimmedVoiceId,
+          cached: false,
+        },
+      };
+    }
+
+    if (!payload.audio_base64) {
+      throw new Error("Voice synthesis returned empty audio.");
+    }
+
     const generatedAtISO = new Date().toISOString();
     const expiresAtISO = new Date(Date.now() + VOICE_CLIP_CACHE_TTL_MS).toISOString();
     const clip: CachedVoiceClip = {
