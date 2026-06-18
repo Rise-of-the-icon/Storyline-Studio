@@ -130,12 +130,16 @@ function audioUrlFromBase64(audioBase64: string): string {
 }
 
 function voiceClipCacheKey(args: {
+  twinId: string;
+  eventId: string;
   text: string;
   emotionFamily: ResearchEmotionFamily;
   voiceId: string;
   modelId: string;
 }): string {
   return JSON.stringify({
+    twinId: args.twinId.trim(),
+    eventId: args.eventId.trim(),
     text: args.text.trim(),
     emotionFamily: args.emotionFamily,
     voiceId: args.voiceId.trim(),
@@ -381,6 +385,8 @@ export function VoiceContextPreview({
     }
 
     const cacheKey = voiceClipCacheKey({
+      twinId: draft.twinId,
+      eventId: event.id,
       text,
       emotionFamily: family,
       voiceId: trimmedVoiceId,

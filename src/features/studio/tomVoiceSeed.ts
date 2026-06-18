@@ -3,8 +3,7 @@ import type { VoiceScriptOption } from "./VoiceContextPreview";
 
 export const TOM_VOICE_ID =
   import.meta.env.VITE_TOM_VOICE_ID ||
-  import.meta.env.VITE_WALT_VOICE_ID ||
-  "default--z5zasdfwci5ofrt-gmsjw__walt";
+  "default--z5zasdfwci5ofrt-gmsjw__tom_hoover";
 export const TOM_VOICE_STUDIO_EVENT_ID = "evt-tom-hoover-pro";
 
 export const TOM_VOICE_STUDIO_DRAFT = {

@@ -18,6 +18,7 @@ import {
 import {
   WALT_VOICE_STUDIO_DRAFT,
   WALT_VOICE_STUDIO_EVENT_ID,
+  WALT_VOICE_SCRIPT_OPTIONS,
 } from "./waltVoiceSeed";
 
 const WALT_VOICE_ID =
@@ -45,6 +46,7 @@ const RESEARCH_TWINS: ResearchTwinConfig[] = [
     draft: WALT_VOICE_STUDIO_DRAFT,
     eventId: WALT_VOICE_STUDIO_EVENT_ID,
     voiceId: WALT_VOICE_ID,
+    scriptOptions: WALT_VOICE_SCRIPT_OPTIONS,
   },
   {
     id: "tom",

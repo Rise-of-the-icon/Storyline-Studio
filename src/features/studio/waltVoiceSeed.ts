@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION, type DigitalTwinProfile } from "@/types/twin";
+import type { VoiceScriptOption } from "./VoiceContextPreview";
 
 const nowISO = "2026-06-10T00:00:00.000Z";
 
@@ -57,3 +58,27 @@ export const WALT_VOICE_STUDIO_DRAFT: DigitalTwinProfile = {
   createdAtISO: nowISO,
   lastSavedAtISO: nowISO,
 };
+
+export const WALT_VOICE_SCRIPT_OPTIONS: VoiceScriptOption[] = [
+  {
+    id: "walt-breakthrough",
+    question: "What made that 2020 moment a breakthrough?",
+    sourceNote: "Producer-provided narrative and reviewed timeline event",
+    answerScript:
+      "In December 2020, I got my first major chance to music supervise a television production. I had never done it at that scale, but I trusted my instincts, moved quickly, and kept refining the sound until it landed. That pressure became proof.",
+  },
+  {
+    id: "walt-approach",
+    question: "How do you describe your creative approach?",
+    sourceNote: "Producer-provided narrative and reviewed timeline event",
+    answerScript:
+      "I work from feeling first, then structure. I listen for tone, story, and where the audience should lean in. The goal is to make the sound carry the truth of the scene without over-explaining it.",
+  },
+  {
+    id: "walt-lesson",
+    question: "What lesson do you keep from that experience?",
+    sourceNote: "Producer-provided narrative and reviewed timeline event",
+    answerScript:
+      "Preparation matters, but belief matters just as much. That moment taught me to step into opportunities before they feel fully comfortable and then do the detailed work to earn the trust that follows.",
+  },
+];
