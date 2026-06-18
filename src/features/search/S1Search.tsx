@@ -11,7 +11,6 @@ import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { Callout } from "@/shared/ui/Callout";
 import { Card } from "@/shared/ui/Card";
-import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 import { EmptyState } from "@/shared/ui/EmptyState";
 import { SearchInput } from "@/shared/ui/SearchInput";
 import { ResumeDraftPanel } from "@/features/search/ResumeDraftPanel";
@@ -22,7 +21,6 @@ import { useTwin } from "@/app/providers/TwinContext";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import {
   DEMO_SUBJECTS,
-  getDemoSubjectById,
 } from "@/data/demoSubjects";
 import type { SearchResultDomain } from "@/features/search/subjectDomain";
 import {
@@ -31,6 +29,7 @@ import {
   SEARCH_ERROR_TITLE,
   SEARCH_LOADING_TITLE,
 } from "@/lib/stateCopy";
+import { listTwins } from "@/lib/storage";
 import {
   createDraftFromWikipedia,
   fetchWikipediaProfile,
@@ -85,11 +84,52 @@ function domainBadgeVariant(
   }
 }
 
-function isBuiltProfile(draft: DigitalTwinProfile | null): draft is DigitalTwinProfile {
+function isBuiltProfile(draft: DigitalTwinProfile | null): boolean {
   return Boolean(
     draft &&
       draft.draftStatus === "saved" &&
       (draft.savedVoiceContexts?.length ?? 0) > 0,
+  );
+}
+
+function profileIdentityKey(profile: DigitalTwinProfile): string {
+  return (
+    profile.wikipedia.pageId ||
+    profile.coreIdentity.name.trim().toLowerCase()
+  );
+}
+
+function profileQualityScore(profile: DigitalTwinProfile): number {
+  const publicReviewedEvents = profile.timeline.filter(
+    (event) => event.visibility === "Public" && event.approvalStatus === "Reviewed",
+  ).length;
+  const voiceContexts = profile.savedVoiceContexts?.length ?? 0;
+  const lastSavedAt = Date.parse(profile.lastSavedAtISO ?? "");
+
+  return (
+    (isBuiltProfile(profile) ? 1_000_000_000 : 0) +
+    voiceContexts * 1_000_000 +
+    publicReviewedEvents * 10_000 +
+    profile.customMoments.length * 100 +
+    (Number.isFinite(lastSavedAt) ? lastSavedAt / 1_000_000_000 : 0)
+  );
+}
+
+function dedupeProfilesByPerson(
+  profiles: DigitalTwinProfile[],
+): DigitalTwinProfile[] {
+  const bestByPerson = new Map<string, DigitalTwinProfile>();
+
+  for (const profile of profiles) {
+    const key = profileIdentityKey(profile);
+    const existing = bestByPerson.get(key);
+    if (!existing || profileQualityScore(profile) > profileQualityScore(existing)) {
+      bestByPerson.set(key, profile);
+    }
+  }
+
+  return Array.from(bestByPerson.values()).sort(
+    (a, b) => profileQualityScore(b) - profileQualityScore(a),
   );
 }
 
@@ -206,17 +246,54 @@ export function S1Search() {
 
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [selectError, setSelectError] = useState<string | null>(null);
-  const [viewingBuiltProfile, setViewingBuiltProfile] = useState(false);
-  // Pending subject choice that would clobber a different in-progress
-  // draft. Shows a confirm dialog until the producer chooses overwrite or
-  // keep-existing. Two shapes: a real Wikipedia hit, or a demo subject id.
-  const [pendingSubject, setPendingSubject] = useState<
-    { kind: "hit"; hit: WikipediaSearchHit } | { kind: "demo"; id: string } | null
-  >(null);
+  const [savedProfiles, setSavedProfiles] = useState<DigitalTwinProfile[]>([]);
+  const [viewingBuiltProfile, setViewingBuiltProfile] =
+    useState<DigitalTwinProfile | null>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  const refreshBuiltProfiles = useCallback(() => {
+    setSavedProfiles(listTwins());
+  }, []);
+
+  useEffect(() => {
+    refreshBuiltProfiles();
+  }, [draft, refreshBuiltProfiles]);
+
+  const activeDraft = isBuiltProfile(draft) ? null : draft;
+
+  const dedupedProfiles = useMemo(
+    () => dedupeProfilesByPerson(savedProfiles),
+    [savedProfiles],
+  );
+
+  const builtProfiles = useMemo(
+    () => dedupedProfiles.filter(isBuiltProfile),
+    [dedupedProfiles],
+  );
+
+  const savedDraftProfiles = useMemo(
+    () =>
+      dedupedProfiles.filter(
+        (profile) =>
+          !isBuiltProfile(profile) && profile.twinId !== activeDraft?.twinId,
+      ),
+    [activeDraft?.twinId, dedupedProfiles],
+  );
+
+  const savedProfileByPageId = useMemo(() => {
+    return new Map(
+      dedupedProfiles.map((profile) => [profile.wikipedia.pageId, profile]),
+    );
+  }, [dedupedProfiles]);
+
+  const builtProfileByPageId = useMemo(() => {
+    return new Map(
+      builtProfiles.map((profile) => [profile.wikipedia.pageId, profile]),
+    );
+  }, [builtProfiles]);
 
   // Query-length gating: instant UI feedback while typing.
   useEffect(() => {
@@ -317,29 +394,28 @@ export function S1Search() {
   );
 
   /**
-   * Entry point for every "start work on this subject" interaction (search
-   * result click, demo CTA, pill row). Guards against silently overwriting
-   * an in-progress draft for a different subject — the producer has to
-   * affirmatively choose to discard it.
+   * Entry point for every "start work on this subject" interaction. Existing
+   * saved profiles are resumed or previewed instead of being overwritten.
    */
   const handleSelect = useCallback(
     (hit: WikipediaSearchHit) => {
-      // If we're already on this exact subject (same wikipedia pageId or
-      // same demo subject id), no conflict — just continue to S2.
-      const existingPageId = draft?.wikipedia.pageId;
       const incomingPageId = hit.demoSubjectId
         ? hit.demoSubjectId
         : hit.pageId;
-      const conflicts =
-        Boolean(existingPageId) && existingPageId !== incomingPageId;
+      const savedProfile = savedProfileByPageId.get(incomingPageId);
 
-      if (conflicts) {
-        setPendingSubject({ kind: "hit", hit });
+      if (savedProfile) {
+        if (isBuiltProfile(savedProfile)) {
+          setViewingBuiltProfile(savedProfile);
+          return;
+        }
+        setDraft(savedProfile);
+        goTo("S2");
         return;
       }
       void performSelect(hit);
     },
-    [draft, performSelect],
+    [goTo, performSelect, savedProfileByPageId, setDraft],
   );
 
   // ----- keyboard navigation -----
@@ -432,38 +508,18 @@ export function S1Search() {
   );
 
   const loadDemoProfile = useCallback((demoId: string) => {
-    const existingPageId = draft?.wikipedia.pageId;
-    const incomingPageId = demoId;
-    if (isBuiltProfile(draft) && existingPageId === incomingPageId) {
-      setViewingBuiltProfile(true);
-      return;
-    }
-    if (existingPageId && existingPageId !== incomingPageId) {
-      setPendingSubject({ kind: "demo", id: demoId });
+    const savedProfile = savedProfileByPageId.get(demoId);
+    if (savedProfile) {
+      if (isBuiltProfile(savedProfile)) {
+        setViewingBuiltProfile(savedProfile);
+        return;
+      }
+      setDraft(savedProfile);
+      goTo("S2");
       return;
     }
     performDemoLoad(demoId);
-  }, [draft, performDemoLoad]);
-
-  // Confirm-dialog resolution — fires either from the result list overwrite
-  // or the demo CTA overwrite. `kind` distinguishes which path to take.
-  const handleConfirmOverwrite = useCallback(() => {
-    if (!pendingSubject) return;
-    const choice = pendingSubject;
-    setPendingSubject(null);
-    if (choice.kind === "hit") {
-      void performSelect(choice.hit);
-    } else {
-      performDemoLoad(choice.id);
-    }
-  }, [pendingSubject, performSelect, performDemoLoad]);
-
-  const pendingSubjectName =
-    pendingSubject?.kind === "hit"
-      ? pendingSubject.hit.title
-      : pendingSubject?.kind === "demo"
-        ? (getDemoSubjectById(pendingSubject.id)?.hit.title ?? "the new subject")
-        : "";
+  }, [goTo, performDemoLoad, savedProfileByPageId, setDraft]);
 
   return (
     <div className="mx-auto max-w-[680px] px-4 py-10">
@@ -482,11 +538,112 @@ export function S1Search() {
 
       <ResumeDraftPanel />
 
-      {isBuiltProfile(draft) && viewingBuiltProfile && (
+      {viewingBuiltProfile && (
         <BuiltProfilePreview
-          draft={draft}
-          onClose={() => setViewingBuiltProfile(false)}
+          draft={viewingBuiltProfile}
+          onClose={() => setViewingBuiltProfile(null)}
         />
+      )}
+
+      {builtProfiles.length > 0 && (
+        <section className="mt-6" aria-labelledby="built-profiles-title">
+          <p
+            id="built-profiles-title"
+            className="label-mono"
+          >
+            Built profiles
+          </p>
+          <div className="mt-3 grid gap-3">
+            {builtProfiles.map((profile) => {
+              const summary = getDraftSummary(profile);
+              return (
+                <Card
+                  key={profile.twinId}
+                  as="button"
+                  type="button"
+                  selectable
+                  onClick={() => setViewingBuiltProfile(profile)}
+                  aria-label={`View built profile for ${summary.subjectName}`}
+                  className="group flex w-full flex-col gap-3 border-l-2 border-l-ok bg-card/70 sm:flex-row sm:items-center sm:justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-ok"
+                >
+                  <Card.Header
+                    eyebrow="Built profile"
+                    actions={<Badge variant="ok">Ready</Badge>}
+                  >
+                    <p className="mt-1 font-body text-sm text-text">
+                      <span className="font-medium">{summary.subjectName}</span>
+                      <span className="text-textsub">
+                        {" "}
+                        — {summary.approvedEventCount} approved event
+                        {summary.approvedEventCount === 1 ? "" : "s"} ·{" "}
+                        {summary.savedVoiceContextCount} voice context
+                        {summary.savedVoiceContextCount === 1 ? "" : "s"}
+                      </span>
+                    </p>
+                  </Card.Header>
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex min-h-[36px] shrink-0 items-center justify-center self-start rounded-md border border-ok bg-ok px-3 py-1.5 font-body text-xs font-medium text-bg sm:self-auto"
+                  >
+                    View built profile
+                  </span>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {savedDraftProfiles.length > 0 && (
+        <section className="mt-6" aria-labelledby="saved-drafts-title">
+          <p
+            id="saved-drafts-title"
+            className="label-mono"
+          >
+            Saved drafts
+          </p>
+          <div className="mt-3 grid gap-3">
+            {savedDraftProfiles.map((profile) => {
+              const summary = getDraftSummary(profile);
+              return (
+                <Card
+                  key={profile.twinId}
+                  as="button"
+                  type="button"
+                  selectable
+                  onClick={() => {
+                    setDraft(profile);
+                    goTo("S2");
+                  }}
+                  aria-label={`Resume saved draft for ${summary.subjectName}`}
+                  className="group flex w-full flex-col gap-3 border-l-2 border-l-gold bg-card/70 sm:flex-row sm:items-center sm:justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                >
+                  <Card.Header
+                    eyebrow="Saved draft"
+                    actions={<Badge variant="muted">{summary.draftStatus}</Badge>}
+                  >
+                    <p className="mt-1 font-body text-sm text-text">
+                      <span className="font-medium">{summary.subjectName}</span>
+                      <span className="text-textsub">
+                        {" "}
+                        — {summary.approvedEventCount} approved event
+                        {summary.approvedEventCount === 1 ? "" : "s"} ·{" "}
+                        {summary.customMomentCount} custom moment
+                        {summary.customMomentCount === 1 ? "" : "s"}
+                      </span>
+                    </p>
+                  </Card.Header>
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex min-h-[36px] shrink-0 items-center justify-center self-start rounded-md border border-gold bg-gold px-3 py-1.5 font-body text-xs font-medium text-bg sm:self-auto"
+                  >
+                    Resume draft
+                  </span>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       <section className="mt-6" aria-labelledby="demo-profiles-title">
@@ -498,8 +655,7 @@ export function S1Search() {
         </p>
         <div className="mt-3 grid gap-3">
           {DEMO_SUBJECTS.map((subject) => {
-            const builtMatch =
-              isBuiltProfile(draft) && draft.wikipedia.pageId === subject.id;
+            const builtMatch = builtProfileByPageId.has(subject.id);
             return (
             <Card
               key={subject.id}
@@ -788,36 +944,6 @@ export function S1Search() {
             );
           })}
       </div>
-
-      <ConfirmDialog
-        open={pendingSubject !== null}
-        title="Replace the saved draft?"
-        description={
-          <>
-            <p>
-              You already have an in-progress draft for{" "}
-              <span className="font-medium text-text">
-                {draft?.coreIdentity.name}
-              </span>
-              . Starting{" "}
-              <span className="font-medium text-text">
-                {pendingSubjectName}
-              </span>{" "}
-              will discard the saved draft — including approved events,
-              custom moments, and guardrail decisions.
-            </p>
-            <p className="mt-2 text-textmuted">
-              This cannot be undone. To keep both, finish the current
-              subject through Save draft first.
-            </p>
-          </>
-        }
-        confirmLabel="Replace draft"
-        cancelLabel="Keep current draft"
-        destructive
-        onConfirm={handleConfirmOverwrite}
-        onCancel={() => setPendingSubject(null)}
-      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { ResponsivePanel } from "@/shared/ui/ResponsivePanel";
 import { StepTransition } from "@/shared/ui/StepTransition";
 import { StudioProvider, useStudio } from "@/features/studio/StudioContext";
 import { useTwin } from "@/app/providers/TwinContext";
+import { clearDraft as clearDraftPointer } from "@/lib/storage";
 import type { ResolverOutput } from "@/types/resolver";
 import type { DigitalTwinProfile, TimelineEvent } from "@/types/twin";
 import type { StudioStepId } from "@/types/navigation";
@@ -146,6 +147,8 @@ function VoiceStudioInner() {
         scene,
       });
       setDraft(finalized);
+      clearDraftPointer();
+      setDraft(null);
       goTo("S1");
       return;
     }

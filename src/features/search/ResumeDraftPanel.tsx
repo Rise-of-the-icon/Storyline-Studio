@@ -22,6 +22,12 @@ export function ResumeDraftPanel() {
   const [confirmClear, setConfirmClear] = useState(false);
 
   if (!draft) return null;
+  if (
+    draft.draftStatus === "saved" &&
+    (draft.savedVoiceContexts?.length ?? 0) > 0
+  ) {
+    return null;
+  }
 
   const summary = getDraftSummary(draft);
 
