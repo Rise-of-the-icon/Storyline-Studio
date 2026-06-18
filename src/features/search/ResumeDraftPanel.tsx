@@ -17,10 +17,11 @@ import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
  * doesn't compete with the search hero. Auto-hides when no draft is
  * present (it returns `null` and renders nothing).
  */
-export function ResumeDraftPanel() {
+export function ResumeDraftPanel({ hidden = false }: { hidden?: boolean }) {
   const { draft, goTo, clearDraft } = useTwin();
   const [confirmClear, setConfirmClear] = useState(false);
 
+  if (hidden) return null;
   if (!draft) return null;
   if (
     draft.draftStatus === "saved" &&

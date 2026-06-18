@@ -289,11 +289,21 @@ export function S1Search() {
     );
   }, [dedupedProfiles]);
 
-  const builtProfileByPageId = useMemo(() => {
-    return new Map(
-      builtProfiles.map((profile) => [profile.wikipedia.pageId, profile]),
+  const activeDraftHasBuiltProfile = useMemo(() => {
+    if (!activeDraft) return false;
+    const activeKey = profileIdentityKey(activeDraft);
+    return builtProfiles.some(
+      (profile) => profileIdentityKey(profile) === activeKey,
     );
-  }, [builtProfiles]);
+  }, [activeDraft, builtProfiles]);
+
+  const visibleDemoSubjects = useMemo(
+    () =>
+      DEMO_SUBJECTS.filter(
+        (subject) => !savedProfileByPageId.has(subject.id),
+      ),
+    [savedProfileByPageId],
+  );
 
   // Query-length gating: instant UI feedback while typing.
   useEffect(() => {
@@ -536,7 +546,7 @@ export function S1Search() {
         </p>
       </div>
 
-      <ResumeDraftPanel />
+      <ResumeDraftPanel hidden={activeDraftHasBuiltProfile} />
 
       {viewingBuiltProfile && (
         <BuiltProfilePreview
@@ -646,56 +656,47 @@ export function S1Search() {
         </section>
       )}
 
-      <section className="mt-6" aria-labelledby="demo-profiles-title">
-        <p
-          id="demo-profiles-title"
-          className="label-mono"
-        >
-          Demo profiles
-        </p>
-        <div className="mt-3 grid gap-3">
-          {DEMO_SUBJECTS.map((subject) => {
-            const builtMatch = builtProfileByPageId.has(subject.id);
-            return (
-            <Card
-              key={subject.id}
-              as="button"
-              type="button"
-              selectable
-              disabled={selectingId !== null}
-              onClick={() => loadDemoProfile(subject.id)}
-              aria-busy={selectingId === subject.id}
-              aria-label={
-                builtMatch
-                  ? `View built demo profile for ${subject.hit.title}`
-                  : `View demo profile for ${subject.hit.title}`
-              }
-              className="group flex w-full flex-col gap-3 border-l-2 border-l-gold bg-card/70 sm:flex-row sm:items-center sm:justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-            >
-              <Card.Header
-                eyebrow="Demo profile"
-                actions={<Badge variant="muted">{subject.category}</Badge>}
+      {visibleDemoSubjects.length > 0 && (
+        <section className="mt-6" aria-labelledby="demo-profiles-title">
+          <p
+            id="demo-profiles-title"
+            className="label-mono"
+          >
+            Demo profiles
+          </p>
+          <div className="mt-3 grid gap-3">
+            {visibleDemoSubjects.map((subject) => (
+              <Card
+                key={subject.id}
+                as="button"
+                type="button"
+                selectable
+                disabled={selectingId !== null}
+                onClick={() => loadDemoProfile(subject.id)}
+                aria-busy={selectingId === subject.id}
+                aria-label={`View demo profile for ${subject.hit.title}`}
+                className="group flex w-full flex-col gap-3 border-l-2 border-l-gold bg-card/70 sm:flex-row sm:items-center sm:justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
               >
-                <p className="mt-1 font-body text-sm text-text">
-                  <span className="font-medium">{subject.hit.title}</span>
-                  <span className="text-textsub"> — {subject.bio}</span>
-                </p>
-              </Card.Header>
-              <span
-                aria-hidden="true"
-                className="inline-flex min-h-[36px] shrink-0 items-center justify-center self-start rounded-md border border-gold bg-gold px-3 py-1.5 font-body text-xs font-medium text-bg sm:self-auto"
-              >
-                {selectingId === subject.id
-                  ? "Loading…"
-                  : builtMatch
-                    ? "View built profile"
-                    : "View demo profile"}
-              </span>
-            </Card>
-            );
-          })}
-        </div>
-      </section>
+                <Card.Header
+                  eyebrow="Demo profile"
+                  actions={<Badge variant="muted">{subject.category}</Badge>}
+                >
+                  <p className="mt-1 font-body text-sm text-text">
+                    <span className="font-medium">{subject.hit.title}</span>
+                    <span className="text-textsub"> — {subject.bio}</span>
+                  </p>
+                </Card.Header>
+                <span
+                  aria-hidden="true"
+                  className="inline-flex min-h-[36px] shrink-0 items-center justify-center self-start rounded-md border border-gold bg-gold px-3 py-1.5 font-body text-xs font-medium text-bg sm:self-auto"
+                >
+                  {selectingId === subject.id ? "Loading…" : "View demo profile"}
+                </span>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <SearchInput
         ref={inputRef}
