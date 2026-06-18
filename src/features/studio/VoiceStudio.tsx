@@ -54,6 +54,7 @@ function VoiceStudioInner() {
     draft,
     studioStep,
     goBack,
+    goTo,
     advanceStudioStep,
     backStudioStep,
     setStudioStep,
@@ -76,6 +77,14 @@ function VoiceStudioInner() {
   }, [studioStep]);
 
   if (!draft) return null;
+
+  const handlePrimaryAction = () => {
+    if (studioStep === "SS4") {
+      goTo("S6");
+      return;
+    }
+    advanceStudioStep();
+  };
 
   return (
     <div className="flex min-h-[calc(100dvh-57px)] w-full flex-col lg:grid lg:grid-cols-[220px_minmax(0,1fr)_280px]">
@@ -150,9 +159,9 @@ function VoiceStudioInner() {
             size: "small",
           }}
           primary={{
-            label: "Continue",
-            onClick: advanceStudioStep,
-            disabled: studioStep === "SS4",
+            label: studioStep === "SS4" ? "Continue to Save" : "Continue",
+            onClick: handlePrimaryAction,
+            disabled: false,
             size: "small",
           }}
         />
