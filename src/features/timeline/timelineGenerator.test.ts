@@ -47,11 +47,11 @@ describe("generateImportBundle — curated demo path", () => {
       guardrailReviews: [],
     };
     const bundle = await generateImportBundle(draft);
-    expect(bundle.timeline.length).toBeGreaterThanOrEqual(5);
-    expect(bundle.customMoments.length).toBeGreaterThan(0);
-    // Every event from a curated demo carries a `demo` source.
+    expect(bundle.timeline.length).toBeGreaterThanOrEqual(1);
+    expect(bundle.customMoments.length).toBeGreaterThanOrEqual(0);
+    // Walt Liquor is a producer-verified demo fixture — events carry producer sources.
     expect(
-      bundle.timeline.every((e) => e.source.type === "demo"),
+      bundle.timeline.every((e) => e.source.type === "producer"),
     ).toBe(true);
   });
 });

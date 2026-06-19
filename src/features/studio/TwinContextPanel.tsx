@@ -39,7 +39,7 @@ export function TwinContextPanel({ draft }: TwinContextPanelProps) {
           className="h-16 w-16 rounded-lg object-cover lg:mt-4"
         />
       ) : (
-        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-card font-display text-xl text-textmuted lg:mt-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-card font-display text-xl text-textmuted lg:mt-4" aria-hidden="true">
           {wiki.title.slice(0, 1)}
         </div>
       )}
@@ -72,6 +72,7 @@ export function TwinContextPanel({ draft }: TwinContextPanelProps) {
             >
               <button
                 type="button"
+                aria-label={`Source confidence: ${confidence.label}`}
                 className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
               >
                 <Badge variant="blue">{confidence.label}</Badge>

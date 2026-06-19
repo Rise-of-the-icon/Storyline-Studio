@@ -761,6 +761,7 @@ export function S1Search() {
       <SearchInput
         ref={inputRef}
         className="mt-8"
+        label="Search a public figure"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={onInputKeyDown}
@@ -803,7 +804,7 @@ export function S1Search() {
       {phase === "results" && results.length > 0 && (
         <div
           className="mt-5 flex flex-wrap items-center gap-2"
-          role="tablist"
+          role="group"
           aria-label="Filter results by category"
         >
           {DOMAIN_FILTER_ORDER.map((key) => {
@@ -814,8 +815,7 @@ export function S1Search() {
               <button
                 key={key}
                 type="button"
-                role="tab"
-                aria-selected={isActive}
+                aria-pressed={isActive}
                 disabled={isDisabled}
                 onClick={() => setDomainFilter(key)}
                 className={[
@@ -840,6 +840,7 @@ export function S1Search() {
         id="s1-search-results"
         className="mt-6 space-y-3"
         aria-live="polite"
+        aria-busy={isLoading}
         role="listbox"
         aria-label="Search results"
       >

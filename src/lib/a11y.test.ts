@@ -162,4 +162,43 @@ describe("a11y · static analysis", () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  test("no `role=\"tab\"` / `role=\"tablist\"` without full tab widget semantics", () => {
+    // Filter chips and twin switchers use `role=\"group\"` + `aria-pressed`
+    // (see SegControl). Tab roles imply arrow-key navigation and tabpanels —
+    // using them on simple toggle groups misleads screen readers.
+    const offenders: Array<{ file: string; line: number; text: string }> = [];
+    for (const file of TSX_FILES) {
+      const src = readFileSync(file, "utf8");
+      const lines = src.split(/\r?\n/);
+      lines.forEach((text, i) => {
+        if (!/role\s*=\s*["']tab(?:list)?["']/.test(text)) return;
+        offenders.push({
+          file: relative(ROOT, file),
+          line: i + 1,
+          text: text.trim().slice(0, 120),
+        });
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("no `role=\"radio\"` / `role=\"radiogroup\"` without keyboard support", () => {
+    // Single-select cards and tone pickers use `role=\"group\"` + `aria-pressed`
+    // instead of radio semantics that require arrow-key roving focus.
+    const offenders: Array<{ file: string; line: number; text: string }> = [];
+    for (const file of TSX_FILES) {
+      const src = readFileSync(file, "utf8");
+      const lines = src.split(/\r?\n/);
+      lines.forEach((text, i) => {
+        if (!/role\s*=\s*["']radio(?:group)?["']/.test(text)) return;
+        offenders.push({
+          file: relative(ROOT, file),
+          line: i + 1,
+          text: text.trim().slice(0, 120),
+        });
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
 });

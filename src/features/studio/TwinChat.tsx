@@ -452,9 +452,9 @@ function LoadingBubble() {
       aria-busy="true"
     >
       <span className="inline-flex gap-1" aria-hidden="true">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:120ms]" />
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:240ms]" />
+        <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-gold" />
+        <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-gold [animation-delay:120ms]" />
+        <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-gold [animation-delay:240ms]" />
       </span>
       <span className="font-mono text-xs text-textsub">
         {CHAT_LOADING_TITLE}

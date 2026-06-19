@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTwin } from "@/app/providers";
 import type { TimelineEvent } from "@/types/twin";
+import { LoadingState } from "@/shared/ui/LoadingState";
 import { StudioProvider, useStudio } from "./StudioContext";
 import { VoiceContextPreview } from "./VoiceContextPreview";
 import {
@@ -23,9 +24,11 @@ function WaltVoiceLabInner() {
   if (!event || !resolverOutput) {
     return (
       <main className="min-h-[calc(100dvh-57px)] px-4 py-8">
-        <p className="mx-auto max-w-2xl font-mono text-sm text-textsub">
-          Loading Walt Liquor voice lab...
-        </p>
+        <LoadingState
+          className="mx-auto max-w-2xl"
+          eyebrow="Voice Lab"
+          title="Loading Walt Liquor voice lab…"
+        />
       </main>
     );
   }

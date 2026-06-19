@@ -191,7 +191,7 @@ function VoiceStudioInner() {
           role="region"
           aria-label={`Studio step: ${studioStep}`}
         >
-          <div className="mx-auto max-w-2xl">
+          <div className="mx-auto max-w-[680px]">
             <HowItWorksPanel />
             <Card className="sm:p-6">
               <StepTransition key={studioStep} direction={transitionDirection}>
@@ -214,7 +214,7 @@ function VoiceStudioInner() {
 
         <WizardActionBar
           position="sticky"
-          maxWidthClass="max-w-2xl"
+          maxWidthClass="max-w-[680px]"
           back={{
             label: "← Back to Saved",
             onClick: goBack,
