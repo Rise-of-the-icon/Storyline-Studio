@@ -14,6 +14,8 @@ export interface AudioPreviewProps {
   title: string;
   /** Optional one-line explanation shown when `src` is null. */
   disabledNote?: string;
+  /** Reports native playback state to parent controls that need to lock state. */
+  onPlayingChange?: (playing: boolean) => void;
 }
 
 function formatClock(seconds: number): string {
@@ -31,7 +33,12 @@ function formatClock(seconds: number): string {
  * Self-contained: owns its `<audio>` element and the playback state it derives
  * from native media events. Cleans up listeners and `pause()`s on unmount.
  */
-export function AudioPreview({ src, title, disabledNote }: AudioPreviewProps) {
+export function AudioPreview({
+  src,
+  title,
+  disabledNote,
+  onPlayingChange,
+}: AudioPreviewProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -40,10 +47,11 @@ export function AudioPreview({ src, title, disabledNote }: AudioPreviewProps) {
 
   useEffect(() => {
     setPlaying(false);
+    onPlayingChange?.(false);
     setDuration(0);
     setCurrent(0);
     setErrored(false);
-  }, [src]);
+  }, [onPlayingChange, src]);
 
   useEffect(() => {
     const node = audioRef.current;
@@ -51,14 +59,22 @@ export function AudioPreview({ src, title, disabledNote }: AudioPreviewProps) {
 
     const onLoaded = () => setDuration(node.duration);
     const onTime = () => setCurrent(node.currentTime);
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
+    const onPlay = () => {
+      setPlaying(true);
+      onPlayingChange?.(true);
+    };
+    const onPause = () => {
+      setPlaying(false);
+      onPlayingChange?.(false);
+    };
     const onEnded = () => {
       setPlaying(false);
+      onPlayingChange?.(false);
       setCurrent(node.duration);
     };
     const onError = () => {
       setPlaying(false);
+      onPlayingChange?.(false);
       setErrored(true);
     };
 
@@ -78,7 +94,7 @@ export function AudioPreview({ src, title, disabledNote }: AudioPreviewProps) {
       node.removeEventListener("ended", onEnded);
       node.removeEventListener("error", onError);
     };
-  }, [src]);
+  }, [onPlayingChange, src]);
 
   if (!src) {
     return (

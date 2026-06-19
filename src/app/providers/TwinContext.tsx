@@ -50,8 +50,12 @@ export interface TwinContextValue {
   goHome: () => void;
   rejectToCustomMoments: () => void;
   setDraft: (draft: DigitalTwinProfile | null) => void;
-  /** In-memory draft for research/demo routes; does not persist. */
-  setTransientDraft: (draft: DigitalTwinProfile) => void;
+  /**
+   * Load a draft into memory without writing it to localStorage or remote
+   * mirror storage. Used for internal research fixtures that should exercise
+   * the real Studio UI without publishing seeded profiles.
+   */
+  setTransientDraft: (draft: DigitalTwinProfile | null) => void;
   updateDraft: (updater: (prev: DigitalTwinProfile) => DigitalTwinProfile) => void;
   persistDraft: () => void;
   /**
@@ -122,8 +126,11 @@ export function TwinProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setTransientDraft = useCallback((next: DigitalTwinProfile) => {
+  const setTransientDraft = useCallback((next: DigitalTwinProfile | null) => {
     setDraftState(next);
+    if (next) {
+      setCompletedThroughStep((prev) => Math.max(prev, stepForScreen("S7")));
+    }
   }, []);
 
   /**
