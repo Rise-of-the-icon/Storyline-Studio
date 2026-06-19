@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTwin } from "@/app/providers";
 import type { DigitalTwinProfile, TimelineEvent } from "@/types/twin";
+import { LoadingState } from "@/shared/ui/LoadingState";
 import { StudioProvider, useStudio } from "./StudioContext";
 import { VoiceContextPreview, type VoiceScriptOption } from "./VoiceContextPreview";
 import {
@@ -97,9 +98,11 @@ function ResearchTwinPreviewInner({
   if (!event || !resolverOutput) {
     return (
       <main className="min-h-[calc(100dvh-57px)] px-4 py-8">
-        <p className="mx-auto max-w-2xl font-mono text-sm text-textsub">
-          Loading voice preview...
-        </p>
+        <LoadingState
+          className="mx-auto max-w-2xl"
+          eyebrow="Voice Preview"
+          title="Loading voice preview…"
+        />
       </main>
     );
   }
@@ -117,7 +120,7 @@ function ResearchTwinPreviewInner({
           </p>
           <div
             className="mt-5 inline-flex rounded-md border border-border bg-card p-1"
-            role="tablist"
+            role="group"
             aria-label="Research twin"
           >
             {RESEARCH_TWINS.map((twin) => {
@@ -126,8 +129,7 @@ function ResearchTwinPreviewInner({
                 <button
                   key={twin.id}
                   type="button"
-                  role="tab"
-                  aria-selected={selected}
+                  aria-pressed={selected}
                   onClick={() => onSelectTwin(twin.id)}
                   className={[
                     "rounded px-3 py-2 font-mono text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-gold",

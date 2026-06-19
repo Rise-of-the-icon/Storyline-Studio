@@ -3,6 +3,7 @@ import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { ErrorState } from "@/shared/ui/ErrorState";
+import { EmptyState } from "@/shared/ui/EmptyState";
 import { LoadingState } from "@/shared/ui/LoadingState";
 import { RetryPanel } from "@/shared/ui/RetryPanel";
 import { useTwin } from "@/app/providers/TwinContext";
@@ -71,10 +72,17 @@ export function S6DraftSaved() {
 
   if (!draft && phase !== "saving") {
     return (
-      <div className="mx-auto max-w-[680px] px-4 py-16 text-center">
-        <Button variant="primary" onClick={() => goTo("S1")}>
-          Go to search
-        </Button>
+      <div className="mx-auto max-w-[680px] px-4 py-16">
+        <EmptyState
+          eyebrow="S6 · Draft"
+          title="No draft to save"
+          description="Start from search to build a new digital twin profile."
+          action={
+            <Button variant="primary" onClick={() => goTo("S1")}>
+              Go to search
+            </Button>
+          }
+        />
       </div>
     );
   }

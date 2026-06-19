@@ -657,7 +657,7 @@ export function VoiceContextPreview({
             <p className="label-mono">Preview question</p>
             <div
               className="mt-2 grid gap-2"
-              role="tablist"
+              role="group"
               aria-label="Preview question"
             >
               {scriptOptions.map((option) => {
@@ -666,8 +666,7 @@ export function VoiceContextPreview({
                   <button
                     key={option.id}
                     type="button"
-                    role="tab"
-                    aria-selected={selected}
+                    aria-pressed={selected}
                     disabled={synthesisStatus === "generating"}
                     onClick={() => handleScriptOptionChange(option)}
                     className={[
@@ -724,7 +723,10 @@ export function VoiceContextPreview({
         </div>
 
         {synthesisError && (
-          <p className="mt-3 rounded-md border border-danger/40 bg-dangerfaint px-3 py-2 font-body text-sm text-danger">
+          <p
+            className="mt-3 rounded-md border border-danger/40 bg-dangerfaint px-3 py-2 font-body text-sm text-danger"
+            role="alert"
+          >
             {synthesisError}
           </p>
         )}
@@ -735,7 +737,7 @@ export function VoiceContextPreview({
           <p className="label-mono">Emotion tone</p>
           <div
             className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
-            role="radiogroup"
+            role="group"
             aria-label="Emotion tone"
           >
             {RESEARCH_EMOTION_OPTIONS.map((option) => {
@@ -745,8 +747,7 @@ export function VoiceContextPreview({
                 <button
                   key={option}
                   type="button"
-                  role="radio"
-                  aria-checked={selected}
+                  aria-pressed={selected}
                   disabled={disabled}
                   onClick={() => handleEmotionFamilyChange(option)}
                   className={[

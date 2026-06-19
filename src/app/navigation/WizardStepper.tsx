@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { deriveStepperItems, type StepperItem } from "@/app/navigation/stepperState";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import type { ScreenId } from "@/types/navigation";
 
 export interface WizardStepperProps {
@@ -29,14 +30,15 @@ export function WizardStepper({
 }: WizardStepperProps) {
   const items = deriveStepperItems(currentScreen, completedThroughStep);
   const currentRef = useRef<HTMLButtonElement | null>(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     currentRef.current?.scrollIntoView({
       block: "nearest",
       inline: "center",
-      behavior: "smooth",
+      behavior: reducedMotion ? "auto" : "smooth",
     });
-  }, [currentScreen]);
+  }, [currentScreen, reducedMotion]);
 
   return (
     <nav aria-label="Wizard progress" className="-mx-1">

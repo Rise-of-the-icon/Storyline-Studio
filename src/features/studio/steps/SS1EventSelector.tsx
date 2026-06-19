@@ -36,8 +36,7 @@ function EventCard({
     <Card
       as="button"
       type="button"
-      role="radio"
-      aria-checked={selected}
+      aria-pressed={selected}
       selectable
       selected={selected}
       onClick={onSelect}
@@ -132,7 +131,7 @@ export function SS1EventSelector() {
           )}
           <ul
             className="mt-6 max-h-[min(52vh,480px)] space-y-3 overflow-y-auto pr-1"
-            role="radiogroup"
+            role="group"
             aria-label="Approved anchoring timeline events"
           >
             {events.map((event) => (
